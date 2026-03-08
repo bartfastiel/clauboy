@@ -23,6 +23,7 @@ function HelpLink({ url, label }: { url: string; label: string }): React.ReactEl
 
 export default function SettingsApp(): React.ReactElement {
   const [config, setConfig] = useState<Config | null>(null)
+  const [savedConfig, setSavedConfig] = useState<Config | null>(null)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
   const [ghValidation, setGhValidation] = useState<ValidationState>('idle')
@@ -30,7 +31,7 @@ export default function SettingsApp(): React.ReactElement {
   const [anthropicValidation, setAnthropicValidation] = useState<ValidationState>('idle')
 
   useEffect(() => {
-    window.clauboy.getConfig().then(setConfig).catch(console.error)
+    window.clauboy.getConfig().then((c) => { setConfig(c); setSavedConfig(c) }).catch(console.error)
   }, [])
 
   const handleSave = async (): Promise<void> => {
@@ -39,6 +40,7 @@ export default function SettingsApp(): React.ReactElement {
     setSaved(false)
     try {
       await window.clauboy.saveConfig(config)
+      setSavedConfig(config)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch (err) {
@@ -76,6 +78,8 @@ export default function SettingsApp(): React.ReactElement {
   const updateDocker = (key: keyof Config['docker'], value: string): void =>
     setConfig((c) => c ? { ...c, docker: { ...c.docker, [key]: value } } : c)
 
+  const isDirty = JSON.stringify(config) !== JSON.stringify(savedConfig)
+
   if (!config) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '10px', color: 'var(--text-secondary)' }}>
@@ -91,7 +95,12 @@ export default function SettingsApp(): React.ReactElement {
       {/* Header */}
       <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
         <span style={{ fontWeight: 700, fontSize: '15px', flex: 1 }}>⚙ Settings</span>
-        <button className="primary" onClick={() => void handleSave()}>
+        <button
+          className="primary"
+          onClick={() => void handleSave()}
+          disabled={!isDirty}
+          style={{ opacity: isDirty ? 1 : 0.5 }}
+        >
           {saved ? '✓ Saved' : 'Save'}
         </button>
       </div>
