@@ -217,33 +217,45 @@ export default function OnboardingApp(): React.ReactElement {
 
         {step === 2 && (
           <div>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', fontSize: '13px' }}>
-              Optional: Configure a GitHub App for bot comments. Leave empty to use your PAT instead.
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '8px', fontSize: '13px' }}>
+              Optional: Configure a GitHub App so Clauboy can post comments as a bot. Leave empty to post as your own account (PAT).
             </p>
-            <div className="form-group">
-              <label>GitHub App ID</label>
-              <input
-                value={config.github.appId ?? ''}
-                onChange={(e) => updateGithub('appId', e.target.value)}
-                placeholder="123456"
-              />
-            </div>
-            <div className="form-group">
-              <label>Installation ID</label>
-              <input
-                value={config.github.installationId ?? ''}
-                onChange={(e) => updateGithub('installationId', e.target.value)}
-                placeholder="87654321"
-              />
-            </div>
-            <div className="form-group">
-              <label>Private Key (PEM)</label>
-              <textarea
-                value={config.github.privateKey ?? ''}
-                onChange={(e) => updateGithub('privateKey', e.target.value)}
-                placeholder="-----BEGIN RSA PRIVATE KEY-----..."
-                style={{ minHeight: '120px', fontFamily: 'monospace', fontSize: '11px' }}
-              />
+            <button
+              className="primary"
+              onClick={() => setStep(3)}
+              style={{ marginBottom: '16px', width: '100%' }}
+            >
+              Skip → Use my PAT for bot comments
+            </button>
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px', opacity: 0.7 }}>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '12px', fontSize: '12px' }}>
+                Or configure a GitHub App:
+              </p>
+              <div className="form-group">
+                <label>GitHub App ID</label>
+                <input
+                  value={config.github.appId ?? ''}
+                  onChange={(e) => updateGithub('appId', e.target.value)}
+                  placeholder="123456"
+                />
+              </div>
+              <div className="form-group">
+                <label>Installation ID</label>
+                <input
+                  value={config.github.installationId ?? ''}
+                  onChange={(e) => updateGithub('installationId', e.target.value)}
+                  placeholder="87654321"
+                />
+              </div>
+              <div className="form-group">
+                <label>Private Key (PEM)</label>
+                <textarea
+                  value={config.github.privateKey ?? ''}
+                  onChange={(e) => updateGithub('privateKey', e.target.value)}
+                  placeholder="-----BEGIN RSA PRIVATE KEY-----..."
+                  style={{ minHeight: '100px', fontFamily: 'monospace', fontSize: '11px' }}
+                />
+              </div>
             </div>
           </div>
         )}
@@ -399,7 +411,7 @@ export default function OnboardingApp(): React.ReactElement {
             disabled={step === 4 || step === 5}
             style={{ opacity: (step === 4 || step === 5) ? 0.4 : 1 }}
           >
-            Next →
+            {step === 2 ? 'Next (use GitHub App) →' : 'Next →'}
           </button>
         </div>
       )}
