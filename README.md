@@ -1,4 +1,6 @@
-# 🤠 Clauboy
+# Clauboy
+
+<img src="resources/logo.png" alt="Clauboy Logo" width="120" />
 
 Orchestrate [Claude Code](https://github.com/anthropics/claude-code) agents in isolated Docker containers — one per GitHub Issue.
 
