@@ -38,7 +38,7 @@ const DEFAULT_CONFIG: Config = {
   },
   docker: {
     socketPath: '//./pipe/docker_engine',
-    imageName: 'clauboy-agent',
+    imageName: 'bartfastiel/clauboy-agent:latest',
     networkName: 'clauboy-net',
     memoryLimit: '2g',
     cpuLimit: '1.0'
@@ -127,7 +127,11 @@ export function loadConfig(): Config {
       },
       claudeApiKey: raw._claudeApiKeyEncrypted
         ? decryptToken(raw.claudeApiKey ?? '')
-        : (raw.claudeApiKey ?? '')
+        : (raw.claudeApiKey ?? ''),
+      // Resolve cloneDir to absolute path if it's relative
+      cloneDir: raw.cloneDir
+        ? (path.isAbsolute(raw.cloneDir) ? raw.cloneDir : path.resolve(raw.cloneDir))
+        : DEFAULT_CONFIG.cloneDir
     }
 
     return config

@@ -70,6 +70,9 @@ export async function createWorktree(
     return wtPath
   }
 
+  // Prune stale worktree references before adding (prevents "already exists" errors)
+  await git.raw(['worktree', 'prune'])
+
   if (branchExists) {
     await git.raw(['worktree', 'add', wtPath, branchName])
   } else {

@@ -84,9 +84,12 @@ export async function startContainer(
   env.push(`GITHUB_OWNER=${config.github.owner}`)
   env.push(`GITHUB_REPO=${config.github.repo}`)
 
+  // Ensure absolute path and convert Windows backslashes for Docker
+  const absoluteWtPath = path.resolve(worktreePath).replace(/\\/g, '/')
+
   const hostConfig: Dockerode.HostConfig = {
     NetworkMode: config.docker.networkName,
-    Binds: [`${worktreePath}:/workspace`],
+    Binds: [`${absoluteWtPath}:/workspace`],
     WorkingDir: '/workspace'
   }
 
@@ -220,6 +223,33 @@ export async function buildImage(
         resolve()
       } else {
         reject(new Error(`docker build exited with code ${code}`))
+      }
+    })
+
+    proc.on('error', reject)
+  })
+}
+
+export async function pullImage(
+  imageName: string,
+  onLog: (log: string) => void
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn('docker', ['pull', imageName])
+
+    proc.stdout.on('data', (data: Buffer) => {
+      onLog(data.toString())
+    })
+
+    proc.stderr.on('data', (data: Buffer) => {
+      onLog(data.toString())
+    })
+
+    proc.on('close', (code) => {
+      if (code === 0) {
+        resolve()
+      } else {
+        reject(new Error(`docker pull exited with code ${code}`))
       }
     })
 

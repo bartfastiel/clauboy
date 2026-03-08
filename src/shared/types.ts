@@ -119,6 +119,8 @@ export const IPC = {
   TERMINAL_RESIZE: 'terminal:resize',
   DOCKER_BUILD_IMAGE: 'docker:build-image',
   DOCKER_BUILD_LOG: 'docker:build-log',
+  DOCKER_PULL_IMAGE: 'docker:pull-image',
+  DOCKER_PULL_LOG: 'docker:pull-log',
   DOCKER_CHECK: 'docker:check',
   GITHUB_FORCE_SYNC: 'github:force-sync',
   GITHUB_CLONE_REPO: 'github:clone-repo',

@@ -56,6 +56,17 @@ const clauboyAPI = {
       .finally(() => ipcRenderer.removeListener(IPC.DOCKER_BUILD_LOG, handler))
   },
 
+  pullImage: (
+    imageName: string,
+    onLog: (log: string) => void
+  ): Promise<boolean> => {
+    const handler = (_event: Electron.IpcRendererEvent, log: string): void => onLog(log)
+    ipcRenderer.on(IPC.DOCKER_PULL_LOG, handler)
+    return ipcRenderer
+      .invoke(IPC.DOCKER_PULL_IMAGE, imageName)
+      .finally(() => ipcRenderer.removeListener(IPC.DOCKER_PULL_LOG, handler))
+  },
+
   checkDocker: (): Promise<boolean> => ipcRenderer.invoke(IPC.DOCKER_CHECK),
 
   forceSync: (): Promise<boolean> => ipcRenderer.invoke(IPC.GITHUB_FORCE_SYNC),

@@ -24,7 +24,7 @@ const defaultConfig: Config = {
   },
   docker: {
     socketPath: '//./pipe/docker_engine',
-    imageName: 'clauboy-agent',
+    imageName: 'bartfastiel/clauboy-agent:latest',
     networkName: 'clauboy-net',
     memoryLimit: '2g',
     cpuLimit: '1.0'
@@ -80,7 +80,7 @@ export default function OnboardingApp(): React.ReactElement {
   const [cloneProgress, setCloneProgress] = useState('')
 
   // Step 5 – docker
-  const [dockerStatus, setDockerStatus] = useState<'idle' | 'checking' | 'building' | 'done' | 'error'>('idle')
+  const [dockerStatus, setDockerStatus] = useState<'idle' | 'checking' | 'pulling' | 'done' | 'error'>('idle')
   const [buildLogs, setBuildLogs] = useState<string[]>([])
 
   // Load persisted config on mount
@@ -122,7 +122,7 @@ export default function OnboardingApp(): React.ReactElement {
       .catch((err: Error) => { setCloneStatus('error'); setError(String(err)) })
   }, [step])
 
-  // Auto-check docker then auto-build when entering step 5
+  // Auto-check docker then auto-pull when entering step 5
   useEffect(() => {
     if (step !== 5 || dockerStatus !== 'idle') return
     setDockerStatus('checking')
@@ -132,11 +132,11 @@ export default function OnboardingApp(): React.ReactElement {
         setError('Docker is not running. Please start Docker Desktop, then click Retry.')
         return
       }
-      setDockerStatus('building')
+      setDockerStatus('pulling')
       setBuildLogs([])
-      return window.clauboy.buildImage(
-        (log) => setBuildLogs((prev) => [...prev, log]),
-        config.docker.imageName
+      return window.clauboy.pullImage(
+        config.docker.imageName,
+        (log) => setBuildLogs((prev) => [...prev, log])
       ).then(() => { setDockerStatus('done'); setStep(6) })
     }).catch((err: Error) => { setDockerStatus('error'); setError(String(err)) })
   }, [step, dockerStatus])
@@ -447,10 +447,10 @@ export default function OnboardingApp(): React.ReactElement {
               label="Check Docker"
               state={dockerStatus === 'idle' || dockerStatus === 'checking' ? 'loading' : dockerStatus === 'error' ? 'error' : 'ok'}
             />
-            {(dockerStatus === 'building' || dockerStatus === 'done') && (
+            {(dockerStatus === 'pulling' || dockerStatus === 'done') && (
               <StatusRow
-                label={dockerStatus === 'building' ? 'Building agent image…' : 'Agent image built'}
-                state={dockerStatus === 'building' ? 'loading' : 'ok'}
+                label={dockerStatus === 'pulling' ? 'Pulling agent image…' : 'Agent image ready'}
+                state={dockerStatus === 'pulling' ? 'loading' : 'ok'}
               />
             )}
             {buildLogs.length > 0 && (

@@ -17,6 +17,7 @@ import {
   sendInput,
   resizeTerminal,
   buildImage,
+  pullImage,
   checkDocker,
   stopContainer,
   getDockerfilePath
@@ -132,6 +133,15 @@ export function registerIpcHandlers(): void {
       }
     })
 
+    return true
+  })
+
+  ipcMain.handle(IPC.DOCKER_PULL_IMAGE, async (event, imageName: string) => {
+    await pullImage(imageName, (log: string) => {
+      if (!event.sender.isDestroyed()) {
+        event.sender.send(IPC.DOCKER_PULL_LOG, log)
+      }
+    })
     return true
   })
 
