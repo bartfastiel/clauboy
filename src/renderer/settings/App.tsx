@@ -1,10 +1,33 @@
 import React, { useEffect, useState } from 'react'
 import { Config } from '../../shared/types'
 
+type ValidationState = 'idle' | 'loading' | 'ok' | 'error'
+
+function ValidationIcon({ state }: { state: ValidationState }): React.ReactElement | null {
+  if (state === 'loading') return <span style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>checking…</span>
+  if (state === 'ok') return <span style={{ color: 'var(--accent-success)', fontSize: '13px' }}>✓</span>
+  if (state === 'error') return <span style={{ color: 'var(--accent-danger)', fontSize: '13px' }}>✗</span>
+  return null
+}
+
+function HelpLink({ url, label }: { url: string; label: string }): React.ReactElement {
+  return (
+    <button
+      onClick={() => window.clauboy.openExternal(url).catch(console.error)}
+      style={{ marginTop: '4px', fontSize: '11px' }}
+    >
+      🔗 {label}
+    </button>
+  )
+}
+
 export default function SettingsApp(): React.ReactElement {
   const [config, setConfig] = useState<Config | null>(null)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
+  const [ghValidation, setGhValidation] = useState<ValidationState>('idle')
+  const [ghUser, setGhUser] = useState<string | null>(null)
+  const [anthropicValidation, setAnthropicValidation] = useState<ValidationState>('idle')
 
   useEffect(() => {
     window.clauboy.getConfig().then(setConfig).catch(console.error)
@@ -23,18 +46,42 @@ export default function SettingsApp(): React.ReactElement {
     }
   }
 
-  const updateGithub = (key: keyof Config['github'], value: string): void => {
-    setConfig((c) => c ? { ...c, github: { ...c.github, [key]: value } } : c)
+  const handleValidateGh = async (): Promise<void> => {
+    if (!config?.github.token) return
+    setGhValidation('loading')
+    setGhUser(null)
+    try {
+      const user = await window.clauboy.validateGithubToken(config.github.token)
+      setGhValidation('ok')
+      setGhUser(user.login)
+    } catch {
+      setGhValidation('error')
+    }
   }
 
-  const updateDocker = (key: keyof Config['docker'], value: string): void => {
-    setConfig((c) => c ? { ...c, docker: { ...c.docker, [key]: value } } : c)
+  const handleValidateAnthropic = async (): Promise<void> => {
+    if (!config?.claudeApiKey) return
+    setAnthropicValidation('loading')
+    try {
+      await window.clauboy.validateAnthropicKey(config.claudeApiKey)
+      setAnthropicValidation('ok')
+    } catch {
+      setAnthropicValidation('error')
+    }
   }
+
+  const updateGithub = (key: keyof Config['github'], value: string): void =>
+    setConfig((c) => c ? { ...c, github: { ...c.github, [key]: value } } : c)
+
+  const updateDocker = (key: keyof Config['docker'], value: string): void =>
+    setConfig((c) => c ? { ...c, docker: { ...c.docker, [key]: value } } : c)
 
   if (!config) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)' }}>
-        Loading...
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '10px', color: 'var(--text-secondary)' }}>
+        <span style={{ fontSize: '18px', animation: 'spin 1s linear infinite' }}>⟳</span>
+        Loading…
+        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
       </div>
     )
   }
@@ -50,10 +97,25 @@ export default function SettingsApp(): React.ReactElement {
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+
         <Section title="GitHub">
           <div className="form-group">
-            <label>Personal Access Token</label>
-            <input type="password" value={config.github.token} onChange={(e) => updateGithub('token', e.target.value)} placeholder="ghp_..." />
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              Personal Access Token
+              <ValidationIcon state={ghValidation} />
+              {ghUser && <span style={{ color: 'var(--text-secondary)', fontSize: '11px', fontWeight: 400 }}>(@{ghUser})</span>}
+            </label>
+            <input
+              type="password"
+              value={config.github.token}
+              onChange={(e) => { updateGithub('token', e.target.value); setGhValidation('idle'); setGhUser(null) }}
+              placeholder="ghp_…"
+              onBlur={() => { if (config.github.token) void handleValidateGh() }}
+            />
+            <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+              <HelpLink url="https://github.com/settings/tokens/new?description=Clauboy&scopes=repo,issues" label="Create GitHub Token" />
+              <button onClick={() => void handleValidateGh()} style={{ fontSize: '11px', marginTop: '4px' }}>Validate</button>
+            </div>
           </div>
           <div className="form-group">
             <label>Repository Owner</label>
@@ -83,15 +145,28 @@ export default function SettingsApp(): React.ReactElement {
 
         <Section title="Claude">
           <div className="form-group">
-            <label>Anthropic API Key</label>
-            <input type="password" value={config.claudeApiKey ?? ''} onChange={(e) => setConfig((c) => c ? { ...c, claudeApiKey: e.target.value } : c)} placeholder="sk-ant-..." />
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              Anthropic API Key
+              <ValidationIcon state={anthropicValidation} />
+            </label>
+            <input
+              type="password"
+              value={config.claudeApiKey ?? ''}
+              onChange={(e) => { setConfig((c) => c ? { ...c, claudeApiKey: e.target.value } : c); setAnthropicValidation('idle') }}
+              placeholder="sk-ant-…"
+              onBlur={() => { if (config.claudeApiKey) void handleValidateAnthropic() }}
+            />
+            <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+              <HelpLink url="https://console.anthropic.com/settings/keys" label="Open Anthropic Console" />
+              <button onClick={() => void handleValidateAnthropic()} style={{ fontSize: '11px', marginTop: '4px' }}>Validate</button>
+            </div>
           </div>
         </Section>
 
         <Section title="Docker">
           <div className="form-group">
-            <label>Socket Path (Windows: //./pipe/docker_engine)</label>
-            <input value={config.docker.socketPath ?? ''} onChange={(e) => updateDocker('socketPath', e.target.value)} />
+            <label>Socket Path</label>
+            <input value={config.docker.socketPath ?? ''} onChange={(e) => updateDocker('socketPath', e.target.value)} placeholder="//./pipe/docker_engine" />
           </div>
           <div className="form-group">
             <label>Image Name</label>
@@ -130,13 +205,11 @@ export default function SettingsApp(): React.ReactElement {
         </Section>
 
         <div style={{ marginBottom: '8px' }}>
-          <button onClick={() => window.clauboy.openButtonEditor().catch(console.error)}>
-            🎛 Edit Buttons
-          </button>
+          <button onClick={() => window.clauboy.openButtonEditor().catch(console.error)}>🎛 Edit Buttons</button>
         </div>
 
         {error && (
-          <div style={{ padding: '10px', background: 'rgba(224, 82, 82, 0.1)', border: '1px solid rgba(224, 82, 82, 0.3)', borderRadius: 'var(--radius)', color: 'var(--accent-danger)', fontSize: '12px' }}>
+          <div style={{ padding: '10px', background: 'rgba(224,82,82,0.1)', border: '1px solid rgba(224,82,82,0.3)', borderRadius: 'var(--radius)', color: 'var(--accent-danger)', fontSize: '12px' }}>
             {error}
           </div>
         )}
