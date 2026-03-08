@@ -23,10 +23,16 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | d
 # Install Claude Code CLI
 RUN npm install -g @anthropic-ai/claude-code
 
-# Set working directory
-WORKDIR /workspace
+# Create non-root user (required by claude --dangerously-skip-permissions)
+RUN useradd -m -s /bin/bash agent
 
-# Configure git
+# Set working directory and grant ownership
+WORKDIR /workspace
+RUN chown agent:agent /workspace
+
+USER agent
+
+# Configure git for the agent user
 RUN git config --global user.email "clauboy@agent.local" && \
     git config --global user.name "Clauboy Agent" && \
     git config --global --add safe.directory /workspace
