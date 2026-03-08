@@ -7,12 +7,9 @@ import { Config, IPC } from '../shared/types'
 
 let docker: Dockerode | null = null
 
-interface AttachmentEntry {
-  stream: NodeJS.ReadWriteStream
-  webContentsId: number
-}
-
-const attachments = new Map<number, AttachmentEntry>()
+// Tracks whether any claude -p conversation has been started per issue.
+// When true, subsequent prompts use -c to continue the conversation.
+const conversationStarted = new Map<number, boolean>()
 
 export function initDocker(config: Config): void {
   if (config.docker.socketPath) {
@@ -102,17 +99,15 @@ export async function startContainer(
     hostConfig.NanoCpus = Math.floor(parseFloat(config.docker.cpuLimit) * 1e9)
   }
 
+  // Reset conversation state when (re)creating a container
+  conversationStarted.delete(issueNumber)
+
   const container = await d.createContainer({
     Image: config.docker.imageName,
     name: containerName,
+    Cmd: ['sleep', 'infinity'],
     Env: env,
     WorkingDir: '/workspace',
-    AttachStdin: true,
-    AttachStdout: true,
-    AttachStderr: true,
-    OpenStdin: true,
-    StdinOnce: false,
-    Tty: true,
     HostConfig: hostConfig,
     Labels: {
       'clauboy.issue': String(issueNumber),
@@ -128,71 +123,61 @@ export async function stopContainer(containerId: string): Promise<void> {
   const d = getDocker()
   try {
     const container = d.getContainer(containerId)
+    const info = await container.inspect()
+    const issueNum = parseInt(info.Config.Labels?.['clauboy.issue'] ?? '0', 10)
+    if (issueNum) conversationStarted.delete(issueNum)
     await container.stop({ t: 10 })
   } catch (err) {
     console.error('Failed to stop container:', err)
   }
 }
 
-export async function attachContainer(
+export async function runAgentPrompt(
   issueNumber: number,
+  prompt: string,
   webContents: WebContents
 ): Promise<void> {
   const d = getDocker()
   const containerName = `clauboy-issue-${issueNumber}`
   const container = d.getContainer(containerName)
 
-  // hijack: true upgrades the HTTP connection to a raw bidirectional socket,
-  // which is required for stdin writes to reach the container on all platforms.
-  const stream = await container.attach({
-    stream: true,
-    stdin: true,
-    stdout: true,
-    stderr: true,
-    hijack: true
+  const isContinue = conversationStarted.get(issueNumber) ?? false
+
+  const exec = await container.exec({
+    Cmd: [
+      'claude',
+      '--dangerously-skip-permissions',
+      ...(isContinue ? ['-c'] : []),
+      '-p',
+      prompt
+    ],
+    AttachStdout: true,
+    AttachStderr: true,
+    User: 'agent'
   })
 
-  attachments.set(issueNumber, {
-    stream: stream as NodeJS.ReadWriteStream,
-    webContentsId: webContents.id
+  await new Promise<void>((resolve, reject) => {
+    exec.start({}, (err: Error | null, stream: NodeJS.ReadableStream) => {
+      if (err) return reject(err)
+
+      const writer = {
+        write: (chunk: Buffer): boolean => {
+          if (!webContents.isDestroyed()) {
+            webContents.send(IPC.TERMINAL_DATA, chunk.toString('base64'))
+          }
+          return true
+        }
+      }
+
+      d.modem.demuxStream(stream, writer, writer)
+
+      stream.on('end', () => {
+        conversationStarted.set(issueNumber, true)
+        resolve()
+      })
+      stream.on('error', reject)
+    })
   })
-
-  stream.on('data', (data: Buffer) => {
-    if (!webContents.isDestroyed()) {
-      webContents.send(IPC.TERMINAL_DATA, data.toString('base64'))
-    }
-  })
-
-  stream.on('error', (err: Error) => {
-    console.error(`Container stream error for issue ${issueNumber}:`, err)
-    attachments.delete(issueNumber)
-  })
-
-  stream.on('end', () => {
-    attachments.delete(issueNumber)
-  })
-}
-
-export function sendInput(issueNumber: number, data: string): void {
-  const attachment = attachments.get(issueNumber)
-  if (attachment) {
-    attachment.stream.write(data)
-  }
-}
-
-export async function resizeTerminal(
-  issueNumber: number,
-  cols: number,
-  rows: number
-): Promise<void> {
-  const d = getDocker()
-  const containerName = `clauboy-issue-${issueNumber}`
-  try {
-    const container = d.getContainer(containerName)
-    await container.resize({ w: cols, h: rows })
-  } catch (err) {
-    console.error('Failed to resize terminal:', err)
-  }
 }
 
 export async function buildImage(

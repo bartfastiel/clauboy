@@ -38,27 +38,17 @@ export default function TerminalComponent({ issueNumber }: TerminalProps): React
     termRef.current = term
     fitAddonRef.current = fitAddon
 
-    // Attach to container
-    window.clauboy.attachTerminal(issueNumber).catch(console.error)
-
-    // Subscribe to terminal data
+    // Subscribe to output streamed from claude -p via docker exec
     const unsubscribe = window.clauboy.onTerminalData((data: string) => {
       const buf = Uint8Array.from(atob(data), (c) => c.charCodeAt(0))
       term.write(buf)
     })
     unsubscribeRef.current = unsubscribe
 
-    // Send input to container
-    term.onData((data: string) => {
-      window.clauboy.sendTerminalInput(issueNumber, data)
-    })
-
     // Resize observer
     const resizeObserver = new ResizeObserver(() => {
       if (fitAddonRef.current) {
         fitAddonRef.current.fit()
-        const { cols, rows } = term
-        window.clauboy.resizeTerminal(issueNumber, cols, rows)
       }
     })
 

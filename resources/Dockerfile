@@ -41,5 +41,5 @@ RUN git config --global user.email "clauboy@agent.local" && \
 RUN mkdir -p /home/agent/.claude && \
     echo '{"theme":"dark"}' > /home/agent/.claude/settings.json
 
-# Default command
-CMD ["claude", "--dangerously-skip-permissions"]
+# Keep container alive; claude is invoked via docker exec (non-interactive print mode)
+CMD ["sleep", "infinity"]

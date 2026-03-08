@@ -13,9 +13,7 @@ import {
   closeAgentWindow
 } from './windows'
 import {
-  attachContainer,
-  sendInput,
-  resizeTerminal,
+  runAgentPrompt,
   buildImage,
   pullImage,
   checkDocker,
@@ -48,9 +46,14 @@ export function registerIpcHandlers(): void {
     createAgentWindow(issueNumber, issueState?.issue.title)
   })
 
-  // Prompt injection (only from predefined buttons, not raw user input)
-  ipcMain.handle(IPC.AGENT_INJECT_PROMPT, (_event, issueNumber: number, prompt: string) => {
-    sendInput(issueNumber, prompt + '\n')
+  // Prompt injection: runs claude -p (or -c -p for follow-ups) via docker exec
+  ipcMain.handle(IPC.AGENT_INJECT_PROMPT, async (event, issueNumber: number, prompt: string) => {
+    appState.updateIssue(issueNumber, { agentIsRunning: true })
+    try {
+      await runAgentPrompt(issueNumber, prompt, event.sender)
+    } finally {
+      appState.updateIssue(issueNumber, { agentIsRunning: false })
+    }
   })
 
   // Teardown workflow
@@ -60,14 +63,14 @@ export function registerIpcHandlers(): void {
 
     if (!webContents || webContents.isDestroyed()) return
 
-    // Step 1: Inject commit/push prompt
-    sendInput(
-      issueNumber,
-      'Gibt es uncommittete Änderungen oder ungepushte Commits? Bitte committen und pushen.\n'
-    )
-
-    // Step 2: Wait 3s
-    await new Promise((resolve) => setTimeout(resolve, 3000))
+    // Step 1: Run commit/push prompt and wait for completion
+    if (!webContents.isDestroyed()) {
+      await runAgentPrompt(
+        issueNumber,
+        'Gibt es uncommittete Änderungen oder ungepushte Commits? Bitte committen und pushen.',
+        webContents
+      ).catch((err) => console.error('Teardown prompt failed:', err))
+    }
 
     const state = appState.getState()
     const issueState = state.issues.find((i) => i.issue.number === issueNumber)
@@ -106,19 +109,6 @@ export function registerIpcHandlers(): void {
 
     // Step 7: Close agent window
     closeAgentWindow(issueNumber)
-  })
-
-  // Terminal
-  ipcMain.handle(IPC.TERMINAL_ATTACH, async (event, issueNumber: number) => {
-    await attachContainer(issueNumber, event.sender)
-  })
-
-  ipcMain.on(IPC.TERMINAL_INPUT, (_event, issueNumber: number, data: string) => {
-    sendInput(issueNumber, data)
-  })
-
-  ipcMain.on(IPC.TERMINAL_RESIZE, (_event, issueNumber: number, cols: number, rows: number) => {
-    void resizeTerminal(issueNumber, cols, rows)
   })
 
   // Docker

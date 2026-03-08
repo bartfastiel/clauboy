@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { AppState, Button, Config, IssueState } from '../../shared/types'
 import { useI18n } from '../shared/useI18n'
 import TerminalComponent from './Terminal'
@@ -26,12 +26,14 @@ function ButtonBar({
   buttons,
   issueState,
   config,
-  onAction
+  onAction,
+  disabled
 }: {
   buttons: Button[]
   issueState: IssueState
   config: Config
   onAction: (btn: Button) => void
+  disabled?: boolean
 }): React.ReactElement {
   const [overflowOpen, setOverflowOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -59,7 +61,8 @@ function ButtonBar({
           key={btn.id}
           onClick={() => onAction(btn)}
           title={btn.label}
-          style={{ fontSize: '12px', padding: '4px 10px', flexShrink: 0 }}
+          disabled={disabled}
+          style={{ fontSize: '12px', padding: '4px 10px', flexShrink: 0, opacity: disabled ? 0.5 : 1 }}
         >
           <span>{btn.icon}</span>
           <span>{btn.label}</span>
@@ -91,7 +94,8 @@ function ButtonBar({
                 <button
                   key={btn.id}
                   onClick={() => { onAction(btn); setOverflowOpen(false) }}
-                  style={{ width: '100%', justifyContent: 'flex-start', marginBottom: '2px', fontSize: '12px' }}
+                  disabled={disabled}
+                  style={{ width: '100%', justifyContent: 'flex-start', marginBottom: '2px', fontSize: '12px', opacity: disabled ? 0.5 : 1 }}
                 >
                   <span>{btn.icon}</span>
                   <span>{btn.label}</span>
@@ -112,6 +116,8 @@ export default function AgentApp(): React.ReactElement {
   })
   const [issueState, setIssueState] = useState<IssueState | null>(null)
   const [config, setConfig] = useState<Config | null>(null)
+  const [customPrompt, setCustomPrompt] = useState('')
+  const customPromptRef = useRef<HTMLInputElement>(null)
   const { t } = useI18n()
 
   useEffect(() => {
@@ -162,8 +168,15 @@ export default function AgentApp(): React.ReactElement {
     }
   }
 
+  const sendCustomPrompt = useCallback(() => {
+    if (!customPrompt.trim() || issueState?.agentIsRunning) return
+    window.clauboy.injectPrompt(issueNumber, customPrompt.trim()).catch(console.error)
+    setCustomPrompt('')
+  }, [customPrompt, issueNumber, issueState?.agentIsRunning])
+
   const isLoading = issueState?.loadingStep !== null && issueState?.loadingStep !== undefined
   const isRunning = issueState?.containerStatus === 'running'
+  const agentIsRunning = issueState?.agentIsRunning ?? false
 
   if (!issueState || !config) {
     return (
@@ -196,7 +209,13 @@ export default function AgentApp(): React.ReactElement {
           issueState={issueState}
           config={config}
           onAction={handleButtonAction}
+          disabled={agentIsRunning}
         />
+        {agentIsRunning && (
+          <span style={{ fontSize: '11px', color: 'var(--accent)', flexShrink: 0, animation: 'pulse 1s infinite' }}>
+            ⟳ thinking…
+          </span>
+        )}
       </div>
 
       {/* Content */}
@@ -230,7 +249,35 @@ export default function AgentApp(): React.ReactElement {
           </div>
         </div>
       ) : isRunning ? (
-        <TerminalComponent issueNumber={issueNumber} />
+        <>
+          <TerminalComponent issueNumber={issueNumber} />
+          <div style={{
+            display: 'flex',
+            gap: '6px',
+            padding: '6px 8px',
+            borderTop: '1px solid var(--border)',
+            background: 'var(--bg-secondary)',
+            flexShrink: 0
+          }}>
+            <input
+              ref={customPromptRef}
+              type="text"
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') sendCustomPrompt() }}
+              disabled={agentIsRunning}
+              placeholder="Custom prompt… (Enter to send)"
+              style={{ flex: 1, fontSize: '12px', padding: '4px 8px' }}
+            />
+            <button
+              onClick={sendCustomPrompt}
+              disabled={agentIsRunning || !customPrompt.trim()}
+              style={{ fontSize: '12px', padding: '4px 12px', flexShrink: 0 }}
+            >
+              Send
+            </button>
+          </div>
+        </>
       ) : issueState.containerStatus === 'error' ? (
         <div style={{
           flex: 1, display: 'flex', flexDirection: 'column',

@@ -63,6 +63,7 @@ export interface IssueState {
   lastKnownCommentId: number | null
   loadingStep: string | null
   errorMessage?: string | null
+  agentIsRunning?: boolean
 }
 
 export interface AppState {
