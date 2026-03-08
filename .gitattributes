@@ -1,0 +1,10 @@
+# Enforce LF line endings for all text files in the repo,
+# regardless of the OS or git config of contributors.
+* text=auto eol=lf
+
+# Explicitly binary — never touch line endings
+*.png binary
+*.jpg binary
+*.ico binary
+*.exe binary
+*.dll binary
