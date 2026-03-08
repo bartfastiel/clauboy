@@ -13,7 +13,8 @@ let buttonEditorWindow: BrowserWindow | null = null
 
 function getRendererUrl(name: string, params?: Record<string, string>): string | null {
   if (is.dev && RENDERER_URL) {
-    const url = new URL(`${RENDERER_URL}/src/renderer/${name}/index.html`)
+    // electron-vite sets src/renderer as the Vite root, so pages are served at /<name>/index.html
+    const url = new URL(`${RENDERER_URL}/${name}/index.html`)
     if (params) {
       for (const [key, value] of Object.entries(params)) {
         url.searchParams.set(key, value)
@@ -31,17 +32,25 @@ function loadWindow(
 ): void {
   const url = getRendererUrl(name, params)
   if (url) {
-    win.loadURL(url)
+    win.loadURL(url).catch((err) => console.error(`[windows] loadURL failed for ${name}:`, err))
   } else {
     win.loadFile(join(__dirname, `../renderer/${name}/index.html`), {
       query: params
-    })
+    }).catch((err) => console.error(`[windows] loadFile failed for ${name}:`, err))
   }
+
+  win.webContents.on('did-fail-load', (_e, code, desc, failedUrl) => {
+    console.error(`[windows] did-fail-load name=${name} code=${code} desc=${desc} url=${failedUrl}`)
+  })
 
   win.webContents.setWindowOpenHandler(({ url: openUrl }) => {
     shell.openExternal(openUrl)
     return { action: 'deny' }
   })
+
+  if (is.dev) {
+    win.webContents.openDevTools({ mode: 'detach' })
+  }
 }
 
 export function createDashboardWindow(): BrowserWindow {
