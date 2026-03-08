@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Config, DEFAULT_BUTTONS } from '../../shared/types'
+import { StepTabs } from '../shared/StepTabs'
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6
 
 const STEP_TITLES = [
   'API Keys',
-  'GitHub Bot (optional)',
+  'GitHub Bot',
   'Repository',
   'Cloning…',
   'Docker Setup',
@@ -218,29 +219,26 @@ export default function OnboardingApp(): React.ReactElement {
     catch (err) { setError(String(err)) }
   }
 
-  const progress = ((step - 1) / 5) * 100
   const filteredRepos = repos.filter((r) => r.owner === config.github.owner)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '24px' }}>
-      {/* Header */}
-      <div style={{ marginBottom: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-          <span style={{ fontSize: '24px' }}>🤠</span>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: '18px' }}>Clauboy Setup</div>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-              Step {step} of 6: {STEP_TITLES[step - 1]}
-            </div>
-          </div>
-        </div>
-        <div style={{ background: 'var(--bg-tertiary)', borderRadius: '4px', height: '4px' }}>
-          <div style={{ background: 'var(--accent)', height: '100%', borderRadius: '4px', width: `${progress}%`, transition: 'width 0.3s' }} />
-        </div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Title header */}
+      <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+        <span style={{ fontSize: '20px' }}>🤠</span>
+        <span style={{ fontWeight: 700, fontSize: '15px' }}>Clauboy Setup</span>
       </div>
 
+      {/* Step tabs – only past and current step are reachable */}
+      <StepTabs
+        steps={STEP_TITLES}
+        current={step - 1}
+        maxReachable={step - 1}
+        onSelect={(i) => { setError(''); setStep((i + 1) as Step) }}
+      />
+
       {/* Content */}
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
 
         {/* ── Step 1: API Keys ── */}
         {step === 1 && (
@@ -495,8 +493,8 @@ export default function OnboardingApp(): React.ReactElement {
         )}
       </div>
 
-      {/* Navigation – only shown where needed */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '16px', borderTop: '1px solid var(--border)', marginTop: '16px' }}>
+      {/* Navigation */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 24px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
         <button
           onClick={() => { setError(''); setStep((s) => (s > 1 ? ((s - 1) as Step) : s)) }}
           disabled={step === 1 || step === 4 || step === 5 || step === 6}
@@ -505,7 +503,6 @@ export default function OnboardingApp(): React.ReactElement {
           ← Back
         </button>
 
-        {/* Next button only on steps 1 and 3 */}
         {step === 1 && (
           <button className="primary" onClick={() => void handleStep1Next()}>
             Next →

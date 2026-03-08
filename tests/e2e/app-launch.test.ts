@@ -74,6 +74,14 @@ test.describe('Onboarding wizard', () => {
     app = await launchApp(tmpConfigDir)
     window = await app.firstWindow()
     await window.waitForLoadState('networkidle')
+
+    // Mock validation IPC handlers so tests can advance without real API calls
+    await app.evaluate(({ ipcMain }) => {
+      ipcMain.removeHandler('github:validate-token')
+      ipcMain.handle('github:validate-token', () => ({ login: 'testuser', name: 'Test User' }))
+      ipcMain.removeHandler('anthropic:validate-key')
+      ipcMain.handle('anthropic:validate-key', () => true)
+    })
   })
 
   test.afterEach(async () => {
@@ -94,7 +102,7 @@ test.describe('Onboarding wizard', () => {
   test('Next navigates from step 1 to step 2', async () => {
     await window.fill('input[placeholder*="ghp_"]', 'ghp_test_placeholder')
     await window.click('button:has-text("Next")')
-    await expect(window.getByText('GitHub App Credentials')).toBeVisible()
+    await expect(window.getByText('Create Bot App Automatically')).toBeVisible()
   })
 
   test('Back returns from step 2 to step 1', async () => {
@@ -104,42 +112,48 @@ test.describe('Onboarding wizard', () => {
     await expect(window.getByText('GitHub Personal Access Token').first()).toBeVisible()
   })
 
-  test('can reach step 3 (Repository Configuration)', async () => {
+  test('can reach step 3 (Repository)', async () => {
     // Step 1 → 2
     await window.fill('input[placeholder*="ghp_"]', 'ghp_test_placeholder')
     await window.click('button:has-text("Next")')
 
-    // Step 2 → 3 (GitHub App is optional, skip straight through)
-    await window.click('button:has-text("Next")')
-    await expect(window.getByText('Repository Configuration')).toBeVisible()
+    // Step 2 → 3 (GitHub App is optional, skip)
+    await window.click('button:has-text("Skip")')
+    await expect(window.locator('input[placeholder="your-org"]')).toBeVisible()
   })
 
   test('repo config fields are present on step 3', async () => {
     await window.fill('input[placeholder*="ghp_"]', 'ghp_test_placeholder')
     await window.click('button:has-text("Next")')
-    await window.click('button:has-text("Next")')
+    await window.click('button:has-text("Skip")')
 
     await expect(window.locator('input[placeholder="your-org"]')).toBeVisible()
     await expect(window.locator('input[placeholder="my-project"]')).toBeVisible()
     await expect(window.locator('input[placeholder="your-github-username"]')).toBeVisible()
   })
 
-  test('progress bar advances with each step', async () => {
-    // Initial progress bar width should be minimal (step 1 of 6)
-    const getWidth = (): Promise<string> =>
-      window.evaluate(() => {
-        const bar = document.querySelector<HTMLElement>('[style*="var(--accent)"][style*="border-radius: 4px"]')
-        return bar?.style.width ?? '0%'
-      })
+  test('step tabs are shown at the top', async () => {
+    await expect(window.getByRole('button', { name: 'API Keys' })).toBeVisible()
+    await expect(window.getByRole('button', { name: 'GitHub Bot' })).toBeVisible()
+    await expect(window.getByRole('button', { name: 'Repository' })).toBeVisible()
+  })
 
-    const widthStep1 = await getWidth()
+  test('future step tabs are not clickable in setup', async () => {
+    // On step 1, clicking the "Repository" tab (a future step) should not navigate
+    await window.click('button[title="Repository"]')
+    // Should still show step 1 content
+    await expect(window.locator('input[placeholder*="ghp_"]')).toBeVisible()
+  })
 
+  test('past step tab navigates back in setup', async () => {
+    // Advance to step 2
     await window.fill('input[placeholder*="ghp_"]', 'ghp_test_placeholder')
     await window.click('button:has-text("Next")')
-    await window.waitForTimeout(300)
+    await expect(window.getByText('Create Bot App Automatically')).toBeVisible()
 
-    const widthStep2 = await getWidth()
-    expect(parseFloat(widthStep2)).toBeGreaterThan(parseFloat(widthStep1))
+    // Click the "API Keys" tab (past step) to go back
+    await window.click('button[title="API Keys"]')
+    await expect(window.locator('input[placeholder*="ghp_"]')).toBeVisible()
   })
 })
 
