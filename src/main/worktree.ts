@@ -4,7 +4,7 @@ import { simpleGit, SimpleGit } from 'simple-git'
 import { Config } from '../shared/types'
 
 export function repoPath(config: Config): string {
-  const cloneDir = config.cloneDir ?? path.join(process.env['USERPROFILE'] ?? '~', '.clauboy', 'repos')
+  const cloneDir = config.cloneDir ?? process.env['CLAUBOY_CONFIG_DIR'] ?? path.join(process.env['USERPROFILE'] ?? '~', '.clauboy', 'repos')
   return path.join(cloneDir, `${config.github.owner}-${config.github.repo}`, 'clone')
 }
 

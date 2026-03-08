@@ -2,9 +2,31 @@ import { resolve } from 'path'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 
+// @octokit/* v7+ are pure ESM. Exclude them from externalization so vite/rollup
+// bundles and transforms them to CJS — keeping the main process as CJS, which is
+// required for Playwright's --require loader injection to work.
+const ESM_ONLY_PACKAGES = [
+  '@octokit/rest',
+  '@octokit/auth-app',
+  '@octokit/core',
+  '@octokit/request',
+  '@octokit/endpoint',
+  '@octokit/graphql',
+  '@octokit/auth-token',
+  '@octokit/plugin-rest-endpoint-methods',
+  '@octokit/plugin-paginate-rest',
+  '@octokit/plugin-paginate-graphql',
+  '@octokit/plugin-request-log',
+  '@octokit/types',
+  '@octokit/openapi-types',
+  'universal-user-agent',
+  'before-after-hook',
+  'deprecation'
+]
+
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()],
+    plugins: [externalizeDepsPlugin({ exclude: ESM_ONLY_PACKAGES })],
     resolve: {
       alias: {
         '@shared': resolve('src/shared')
@@ -13,8 +35,8 @@ export default defineConfig({
     build: {
       rollupOptions: {
         output: {
-          format: 'es',
-          entryFileNames: '[name].mjs'
+          format: 'cjs',
+          entryFileNames: '[name].js'
         }
       }
     }

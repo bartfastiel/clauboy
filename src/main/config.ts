@@ -4,7 +4,9 @@ import * as path from 'path'
 import * as yaml from 'js-yaml'
 import { Config, DEFAULT_BUTTONS } from '../shared/types'
 
-const configDir = path.join(app.getPath('home'), '.clauboy')
+// CLAUBOY_CONFIG_DIR allows tests (and portable installs) to redirect config
+// without touching Electron's HOME or USERPROFILE, which would crash the process.
+const configDir = process.env['CLAUBOY_CONFIG_DIR'] ?? path.join(app.getPath('home'), '.clauboy')
 const configPath = path.join(configDir, 'config.yaml')
 
 export function getConfigDir(): string {

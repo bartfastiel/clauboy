@@ -2,12 +2,15 @@
   "name": "clauboy",
   "version": "0.1.0",
   "description": "Orchestrate Claude Code agents in isolated Docker containers",
-  "main": "out/main/index.mjs",
+  "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "package": "npm run build && electron-builder",
-    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json"
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "test": "npm run build && playwright test",
+    "test:app": "npm run build && playwright test --project=electron",
+    "test:docker": "playwright test --project=docker"
   },
   "dependencies": {
     "@octokit/auth-app": "^7.1.1",
@@ -25,6 +28,7 @@
     "@electron-toolkit/preload": "^3.0.0",
     "@electron-toolkit/tsconfig": "^1.0.1",
     "@electron-toolkit/utils": "^3.0.0",
+    "@playwright/test": "^1.58.2",
     "@types/dockerode": "^3.3.29",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.0.0",
