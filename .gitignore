@@ -5,3 +5,5 @@ dist/
 *.exe
 *.dmg
 *.AppImage
+*.tsbuildinfo
+.claude/
