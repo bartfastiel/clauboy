@@ -47,7 +47,8 @@ const DEFAULT_CONFIG: Config = {
   language: 'en',
   editorCommand: 'code',
   claudeApiKey: '',
-  cloneDir: path.join(app.getPath('home'), '.clauboy', 'repos')
+  cloneDir: path.join(app.getPath('home'), '.clauboy', 'repos'),
+  setupComplete: false
 }
 
 function encryptToken(token: string): string {
@@ -91,6 +92,7 @@ interface RawConfig {
   claudeApiKey?: string
   _claudeApiKeyEncrypted?: boolean
   cloneDir?: string
+  setupComplete?: boolean
 }
 
 export function loadConfig(): Config {
@@ -150,7 +152,8 @@ export function saveConfig(config: Config): void {
     buttons: config.buttons,
     language: config.language,
     editorCommand: config.editorCommand,
-    cloneDir: config.cloneDir
+    cloneDir: config.cloneDir,
+    setupComplete: config.setupComplete
   }
 
   // Encrypt sensitive fields

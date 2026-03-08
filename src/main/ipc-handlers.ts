@@ -191,8 +191,9 @@ export function registerIpcHandlers(): void {
 
   // Onboarding complete
   ipcMain.handle(IPC.ONBOARDING_COMPLETE, (_event, config: Config) => {
-    saveConfig(config)
-    initGitHub(config)
+    const completed = { ...config, setupComplete: true }
+    saveConfig(completed)
+    initGitHub(completed)
     startPolling()
     createDashboardWindow()
     return true

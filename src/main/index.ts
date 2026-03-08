@@ -65,9 +65,9 @@ app.whenReady().then(async () => {
 
   const config = loadConfig()
 
-  // Check if onboarding is needed
-  const needsOnboarding =
-    !config.github.token || !config.github.owner || !config.github.repo
+  // Check if onboarding is needed — skip if already completed or has full config
+  const hasMinConfig = !!(config.github.token && config.github.owner && config.github.repo)
+  const needsOnboarding = !config.setupComplete && !hasMinConfig
 
   if (needsOnboarding) {
     appState.setState({ isOnboarding: true })
@@ -90,7 +90,7 @@ app.whenReady().then(async () => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       const cfg = loadConfig()
-      const needs = !cfg.github.token || !cfg.github.owner || !cfg.github.repo
+      const needs = !cfg.setupComplete && !(cfg.github.token && cfg.github.owner && cfg.github.repo)
       if (needs) {
         createOnboardingWindow()
       } else {

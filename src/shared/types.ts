@@ -100,6 +100,7 @@ export interface Config {
   editorCommand: string
   claudeApiKey?: string
   cloneDir?: string
+  setupComplete?: boolean
 }
 
 // IPC channel names
