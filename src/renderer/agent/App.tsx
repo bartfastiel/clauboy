@@ -211,6 +211,15 @@ export default function AgentApp(): React.ReactElement {
           onAction={handleButtonAction}
           disabled={agentIsRunning}
         />
+        {isRunning && (
+          <button
+            onClick={() => window.clauboy.openAuthTerminal(issueNumber).catch(console.error)}
+            title="Open terminal to run claude auth login"
+            style={{ fontSize: '11px', padding: '3px 8px', flexShrink: 0, opacity: 0.7 }}
+          >
+            🔑 Auth
+          </button>
+        )}
         {agentIsRunning && (
           <span style={{ fontSize: '11px', color: 'var(--accent)', flexShrink: 0, animation: 'pulse 1s infinite' }}>
             ⟳ thinking…

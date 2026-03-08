@@ -119,7 +119,10 @@ const clauboyAPI = {
     ipcRenderer.invoke(IPC.ONBOARDING_COMPLETE, config),
 
   openSettings: (): Promise<void> => ipcRenderer.invoke('window:settings'),
-  openButtonEditor: (): Promise<void> => ipcRenderer.invoke('window:button-editor')
+  openButtonEditor: (): Promise<void> => ipcRenderer.invoke('window:button-editor'),
+
+  openAuthTerminal: (issueNumber: number): Promise<void> =>
+    ipcRenderer.invoke(IPC.AGENT_AUTH_TERMINAL, issueNumber)
 }
 
 contextBridge.exposeInMainWorld('clauboy', clauboyAPI)

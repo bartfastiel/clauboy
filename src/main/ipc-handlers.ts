@@ -18,7 +18,8 @@ import {
   pullImage,
   checkDocker,
   stopContainer,
-  getDockerfilePath
+  getDockerfilePath,
+  openAuthTerminal
 } from './docker'
 import { createWorktree, removeWorktree } from './worktree'
 import { forceSync } from './polling'
@@ -247,6 +248,11 @@ export function registerIpcHandlers(): void {
   // Poll for GitHub App installation ID
   ipcMain.handle(IPC.GITHUB_GET_INSTALLATION_ID, async (_event, appId: string, privateKey: string, owner: string) => {
     return getInstallationId(appId, privateKey, owner)
+  })
+
+  // Open auth terminal for claude auth login
+  ipcMain.handle(IPC.AGENT_AUTH_TERMINAL, (_event, issueNumber: number) => {
+    openAuthTerminal(issueNumber)
   })
 
   // Anthropic API key validation

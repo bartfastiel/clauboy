@@ -138,7 +138,8 @@ export const IPC = {
   SYSTEM_OPEN_EXTERNAL: 'system:open-external',
   SYSTEM_OPEN_IN_EDITOR: 'system:open-in-editor',
   SYSTEM_CONFIRM: 'system:confirm',
-  ONBOARDING_COMPLETE: 'onboarding:complete'
+  ONBOARDING_COMPLETE: 'onboarding:complete',
+  AGENT_AUTH_TERMINAL: 'agent:auth-terminal'
 } as const
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC]

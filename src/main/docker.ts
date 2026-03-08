@@ -2,6 +2,7 @@ import Dockerode from 'dockerode'
 import { spawn } from 'child_process'
 import * as path from 'path'
 import * as fs from 'fs'
+import * as os from 'os'
 import { WebContents } from 'electron'
 import { Config, IPC } from '../shared/types'
 
@@ -84,9 +85,19 @@ export async function startContainer(
   // Ensure absolute path and convert Windows backslashes for Docker
   const absoluteWtPath = path.resolve(worktreePath).replace(/\\/g, '/')
 
+  const claudeAuthDir = path.join(os.homedir(), '.clauboy', 'claude-auth')
+  fs.mkdirSync(claudeAuthDir, { recursive: true })
+  const settingsFile = path.join(claudeAuthDir, 'settings.json')
+  if (!fs.existsSync(settingsFile)) {
+    fs.writeFileSync(settingsFile, JSON.stringify({ theme: 'dark' }))
+  }
+
   const hostConfig: Dockerode.HostConfig = {
     NetworkMode: config.docker.networkName,
-    Binds: [`${absoluteWtPath}:/workspace`],
+    Binds: [
+      `${absoluteWtPath}:/workspace`,
+      `${claudeAuthDir.replace(/\\/g, '/')}:/home/agent/.claude`
+    ],
     WorkingDir: '/workspace'
   }
 
@@ -272,6 +283,12 @@ function parseMemory(memStr: string): number {
     case 'g': return Math.floor(value * 1024 * 1024 * 1024)
     default: return Math.floor(value)
   }
+}
+
+export function openAuthTerminal(issueNumber: number): void {
+  const containerName = `clauboy-issue-${issueNumber}`
+  const cmd = `docker exec -it ${containerName} claude auth login`
+  spawn('cmd.exe', ['/c', 'start', 'cmd.exe', '/k', cmd], { detached: true })
 }
 
 export async function getDockerfilePath(): Promise<string> {

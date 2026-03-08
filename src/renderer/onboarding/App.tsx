@@ -282,6 +282,9 @@ export default function OnboardingApp(): React.ReactElement {
               >
                 🔗 Open Anthropic Console
               </button>
+              <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                Optional if you authenticate via 🔑 Auth in the agent window.
+              </p>
             </div>
           </div>
         )}
