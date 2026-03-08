@@ -1,6 +1,12 @@
-import { BrowserWindow, shell } from 'electron'
+import { BrowserWindow, shell, app } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
+
+function iconPath(): string {
+  return app.isPackaged
+    ? join(process.resourcesPath, 'logo.png')
+    : join(__dirname, '../../resources/logo.png')
+}
 
 const RENDERER_URL = process.env['ELECTRON_RENDERER_URL']
 
@@ -63,6 +69,7 @@ export function createDashboardWindow(): BrowserWindow {
     width: 400,
     height: 600,
     resizable: true,
+    icon: iconPath(),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
@@ -91,6 +98,7 @@ export function createAgentWindow(issueNumber: number, title?: string): BrowserW
     width: 900,
     height: 700,
     resizable: true,
+    icon: iconPath(),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
@@ -118,6 +126,7 @@ export function createOnboardingWindow(): BrowserWindow {
     width: 600,
     height: 500,
     resizable: false,
+    icon: iconPath(),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
@@ -145,6 +154,7 @@ export function createSettingsWindow(): BrowserWindow {
     width: 550,
     height: 700,
     resizable: true,
+    icon: iconPath(),
     parent: dashboardWindow ?? undefined,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -173,6 +183,7 @@ export function createButtonEditorWindow(): BrowserWindow {
     width: 700,
     height: 600,
     resizable: true,
+    icon: iconPath(),
     parent: dashboardWindow ?? undefined,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
