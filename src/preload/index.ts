@@ -80,6 +80,12 @@ const clauboyAPI = {
   validateAnthropicKey: (apiKey: string): Promise<boolean> =>
     ipcRenderer.invoke(IPC.ANTHROPIC_VALIDATE_KEY, apiKey),
 
+  listAllIssues: (): Promise<import('../shared/types').GitHubIssue[]> =>
+    ipcRenderer.invoke(IPC.GITHUB_LIST_ALL_ISSUES),
+
+  labelIssue: (issueNumber: number): Promise<boolean> =>
+    ipcRenderer.invoke(IPC.GITHUB_LABEL_ISSUE, issueNumber),
+
   createGithubApp: (owner: string): Promise<{ appId: string; privateKey: string; installUrl: string; slug: string }> =>
     ipcRenderer.invoke(IPC.GITHUB_CREATE_APP, owner),
 

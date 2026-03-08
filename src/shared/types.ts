@@ -126,6 +126,8 @@ export const IPC = {
   GITHUB_LIST_REPOS: 'github:list-repos',
   GITHUB_CREATE_APP: 'github:create-app',
   GITHUB_GET_INSTALLATION_ID: 'github:get-installation-id',
+  GITHUB_LIST_ALL_ISSUES: 'github:list-all-issues',
+  GITHUB_LABEL_ISSUE: 'github:label-issue',
   ANTHROPIC_VALIDATE_KEY: 'anthropic:validate-key',
   SYSTEM_OPEN_EXTERNAL: 'system:open-external',
   SYSTEM_OPEN_IN_EDITOR: 'system:open-in-editor',

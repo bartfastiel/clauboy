@@ -24,7 +24,7 @@ import {
 import { createWorktree, removeWorktree } from './worktree'
 import { forceSync } from './polling'
 import { cloneRepo } from './worktree'
-import { setLabel, postComment, buildCreateIssueUrl, initGitHub } from './github'
+import { setLabel, postComment, buildCreateIssueUrl, initGitHub, fetchAllOpenIssues } from './github'
 import { startPolling } from './polling'
 import { createGithubAppViaManifest, getInstallationId } from './github-app-manifest'
 
@@ -214,6 +214,16 @@ export function registerIpcHandlers(): void {
     const oc = new Octokit({ auth: token })
     const { data } = await oc.repos.listForAuthenticatedUser({ per_page: 100, sort: 'updated' })
     return data.map((r) => ({ owner: r.owner.login, name: r.name }))
+  })
+
+  // List all open issues (for browse/label UI)
+  ipcMain.handle(IPC.GITHUB_LIST_ALL_ISSUES, () => fetchAllOpenIssues())
+
+  // Add clauboy label to an issue and sync
+  ipcMain.handle(IPC.GITHUB_LABEL_ISSUE, async (_event, issueNumber: number) => {
+    await setLabel(issueNumber, ['clauboy'], [])
+    await forceSync()
+    return true
   })
 
   // GitHub App creation via manifest flow
