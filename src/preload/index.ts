@@ -71,6 +71,15 @@ const clauboyAPI = {
   createIssueUrl: (title?: string, body?: string): Promise<string> =>
     ipcRenderer.invoke(IPC.GITHUB_CREATE_ISSUE_URL, title, body),
 
+  validateGithubToken: (token: string): Promise<{ login: string; name: string | null }> =>
+    ipcRenderer.invoke(IPC.GITHUB_VALIDATE_TOKEN, token),
+
+  listRepos: (token: string): Promise<Array<{ owner: string; name: string }>> =>
+    ipcRenderer.invoke(IPC.GITHUB_LIST_REPOS, token),
+
+  validateAnthropicKey: (apiKey: string): Promise<boolean> =>
+    ipcRenderer.invoke(IPC.ANTHROPIC_VALIDATE_KEY, apiKey),
+
   openExternal: (url: string): Promise<void> =>
     ipcRenderer.invoke(IPC.SYSTEM_OPEN_EXTERNAL, url),
 

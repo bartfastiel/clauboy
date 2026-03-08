@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, Menu } from 'electron'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { loadConfig, saveConfig } from './config'
 import { initGitHub, ensureLabelsExist, fetchClauboyIssues } from './github'
@@ -55,6 +55,7 @@ async function startupSync(): Promise<void> {
 
 app.whenReady().then(async () => {
   electronApp.setAppUserModelId('com.clauboy.app')
+  Menu.setApplicationMenu(null)
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)

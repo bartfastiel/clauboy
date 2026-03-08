@@ -4,7 +4,7 @@ import { Config, DEFAULT_BUTTONS } from '../../shared/types'
 type Step = 1 | 2 | 3 | 4 | 5 | 6
 
 const STEP_TITLES = [
-  'GitHub Personal Access Token',
+  'API Keys',
   'GitHub App Credentials',
   'Repository Configuration',
   'Clone Repository',
@@ -36,6 +36,15 @@ const defaultConfig: Config = {
   cloneDir: ''
 }
 
+type ValidationState = 'idle' | 'loading' | 'ok' | 'error'
+
+function ValidationIcon({ state }: { state: ValidationState }): React.ReactElement | null {
+  if (state === 'loading') return <span style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>checking…</span>
+  if (state === 'ok') return <span style={{ color: 'var(--accent-success)', fontSize: '13px' }}>✓</span>
+  if (state === 'error') return <span style={{ color: 'var(--accent-danger)', fontSize: '13px' }}>✗</span>
+  return null
+}
+
 export default function OnboardingApp(): React.ReactElement {
   const [step, setStep] = useState<Step>(1)
   const [config, setConfig] = useState<Config>(defaultConfig)
@@ -43,6 +52,11 @@ export default function OnboardingApp(): React.ReactElement {
   const [buildLogs, setBuildLogs] = useState<string[]>([])
   const [dockerOk, setDockerOk] = useState<boolean | null>(null)
   const [error, setError] = useState<string>('')
+
+  // Validation state
+  const [githubValidation, setGithubValidation] = useState<ValidationState>('idle')
+  const [anthropicValidation, setAnthropicValidation] = useState<ValidationState>('idle')
+  const [githubUser, setGithubUser] = useState<{ login: string; name: string | null } | null>(null)
 
   const updateGithub = (key: keyof Config['github'], value: string): void => {
     setConfig((c) => ({ ...c, github: { ...c.github, [key]: value } }))
@@ -52,8 +66,47 @@ export default function OnboardingApp(): React.ReactElement {
     setConfig((c) => ({ ...c, docker: { ...c.docker, [key]: value } }))
   }
 
+  const handleStep1Next = async (): Promise<void> => {
+    setError('')
+    if (!config.github.token) {
+      setError('GitHub Personal Access Token is required.')
+      return
+    }
+
+    // Validate GitHub token
+    setGithubValidation('loading')
+    try {
+      const user = await window.clauboy.validateGithubToken(config.github.token)
+      setGithubUser(user)
+      setGithubValidation('ok')
+    } catch (err) {
+      setGithubValidation('error')
+      setError(`GitHub token invalid: ${String(err)}`)
+      return
+    }
+
+    // Validate Anthropic key if provided
+    if (config.claudeApiKey) {
+      setAnthropicValidation('loading')
+      try {
+        await window.clauboy.validateAnthropicKey(config.claudeApiKey)
+        setAnthropicValidation('ok')
+      } catch (err) {
+        setAnthropicValidation('error')
+        setError(`Anthropic API key invalid: ${String(err)}`)
+        return
+      }
+    }
+
+    setStep(2)
+  }
+
   const handleClone = async (): Promise<void> => {
     setError('')
+    if (!config.github.owner || !config.github.repo) {
+      setError('Repository owner and name are required.')
+      return
+    }
     setCloneProgress('Starting...')
     try {
       await window.clauboy.cloneRepo((msg) => setCloneProgress(msg))
@@ -129,22 +182,35 @@ export default function OnboardingApp(): React.ReactElement {
               🔗 Open GitHub Token Page
             </button>
             <div className="form-group">
-              <label>Personal Access Token</label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                GitHub Personal Access Token
+                <ValidationIcon state={githubValidation} />
+                {githubUser && <span style={{ color: 'var(--text-secondary)', fontSize: '11px', fontWeight: 400 }}>(@{githubUser.login})</span>}
+              </label>
               <input
                 type="password"
                 value={config.github.token}
-                onChange={(e) => updateGithub('token', e.target.value)}
+                onChange={(e) => { updateGithub('token', e.target.value); setGithubValidation('idle'); setGithubUser(null) }}
                 placeholder="ghp_..."
               />
             </div>
             <div className="form-group">
-              <label>Claude API Key (ANTHROPIC_API_KEY)</label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                Anthropic API Key
+                <ValidationIcon state={anthropicValidation} />
+              </label>
               <input
                 type="password"
                 value={config.claudeApiKey ?? ''}
-                onChange={(e) => setConfig((c) => ({ ...c, claudeApiKey: e.target.value }))}
+                onChange={(e) => { setConfig((c) => ({ ...c, claudeApiKey: e.target.value })); setAnthropicValidation('idle') }}
                 placeholder="sk-ant-..."
               />
+              <button
+                onClick={() => window.clauboy.openExternal('https://console.anthropic.com/settings/keys').catch(console.error)}
+                style={{ marginTop: '6px', fontSize: '11px' }}
+              >
+                🔗 Open Anthropic Console
+              </button>
             </div>
           </div>
         )}
@@ -318,8 +384,16 @@ export default function OnboardingApp(): React.ReactElement {
           <button
             className="primary"
             onClick={() => {
-              if (step === 4) return // handled by clone button
-              if (step === 5) return // handled by build button
+              if (step === 1) { void handleStep1Next(); return }
+              if (step === 4) return
+              if (step === 5) return
+              if (step === 3) {
+                if (!config.github.owner || !config.github.repo) {
+                  setError('Repository owner and name are required.')
+                  return
+                }
+                setError('')
+              }
               setStep((s) => ((s + 1) as Step))
             }}
             disabled={step === 4 || step === 5}

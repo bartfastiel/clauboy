@@ -1,6 +1,7 @@
 import { ipcMain, dialog, shell } from 'electron'
 import { spawn } from 'child_process'
 import { IPC, Config } from '../shared/types'
+import { Octokit } from '@octokit/rest'
 import { loadConfig, saveConfig } from './config'
 import { appState } from './state'
 import {
@@ -199,4 +200,27 @@ export function registerIpcHandlers(): void {
   // Open settings/button-editor
   ipcMain.handle('window:settings', () => createSettingsWindow())
   ipcMain.handle('window:button-editor', () => createButtonEditorWindow())
+
+  // GitHub token validation + user info
+  ipcMain.handle(IPC.GITHUB_VALIDATE_TOKEN, async (_event, token: string) => {
+    const oc = new Octokit({ auth: token })
+    const { data } = await oc.users.getAuthenticated()
+    return { login: data.login, name: data.name ?? null }
+  })
+
+  // List repos for authenticated user
+  ipcMain.handle(IPC.GITHUB_LIST_REPOS, async (_event, token: string) => {
+    const oc = new Octokit({ auth: token })
+    const { data } = await oc.repos.listForAuthenticatedUser({ per_page: 100, sort: 'updated' })
+    return data.map((r) => ({ owner: r.owner.login, name: r.name }))
+  })
+
+  // Anthropic API key validation
+  ipcMain.handle(IPC.ANTHROPIC_VALIDATE_KEY, async (_event, apiKey: string) => {
+    const response = await fetch('https://api.anthropic.com/v1/models', {
+      headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }
+    })
+    if (!response.ok) throw new Error(`Invalid Anthropic API key (HTTP ${response.status})`)
+    return true
+  })
 }
