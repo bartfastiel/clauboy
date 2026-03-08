@@ -90,10 +90,14 @@ async function runPollTick(): Promise<void> {
           .pop()
 
         if (clauboyLabelEvent) {
-          // Start the agent
+          // Start the agent — show progress without pushing to issueStates twice
           issueState.loadingStep = 'Creating worktree...'
-          issueStates.push(issueState)
-          appState.setState({ issues: issueStates })
+          const alreadyInState = appState.getState().issues.some((i) => i.issue.number === issue.number)
+          if (alreadyInState) {
+            appState.updateIssue(issue.number, issueState)
+          } else {
+            appState.setState({ issues: [...appState.getState().issues, issueState] })
+          }
 
           try {
             const wtPath = worktreeExists(config, issue.number)
