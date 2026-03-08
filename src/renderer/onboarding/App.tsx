@@ -123,7 +123,7 @@ export default function OnboardingApp(): React.ReactElement {
               Create a GitHub Personal Access Token with <code style={{ background: 'var(--bg-tertiary)', padding: '1px 4px', borderRadius: '3px' }}>repo</code> and <code style={{ background: 'var(--bg-tertiary)', padding: '1px 4px', borderRadius: '3px' }}>issues</code> scopes.
             </p>
             <button
-              onClick={() => window.clauboy.openExternal('https://github.com/settings/tokens/new').catch(console.error)}
+              onClick={() => window.clauboy.openExternal('https://github.com/settings/tokens/new?description=Clauboy&scopes=repo,issues').catch(console.error)}
               style={{ marginBottom: '16px', fontSize: '12px' }}
             >
               🔗 Open GitHub Token Page
