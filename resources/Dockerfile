@@ -37,5 +37,9 @@ RUN git config --global user.email "clauboy@agent.local" && \
     git config --global user.name "Clauboy Agent" && \
     git config --global --add safe.directory /workspace
 
+# Pre-seed Claude Code settings so the first-run theme wizard is skipped
+RUN mkdir -p /home/agent/.claude && \
+    echo '{"theme":"dark"}' > /home/agent/.claude/settings.json
+
 # Default command
 CMD ["claude", "--dangerously-skip-permissions"]

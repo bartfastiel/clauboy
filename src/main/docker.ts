@@ -142,11 +142,14 @@ export async function attachContainer(
   const containerName = `clauboy-issue-${issueNumber}`
   const container = d.getContainer(containerName)
 
+  // hijack: true upgrades the HTTP connection to a raw bidirectional socket,
+  // which is required for stdin writes to reach the container on all platforms.
   const stream = await container.attach({
     stream: true,
     stdin: true,
     stdout: true,
-    stderr: true
+    stderr: true,
+    hijack: true
   })
 
   attachments.set(issueNumber, {
