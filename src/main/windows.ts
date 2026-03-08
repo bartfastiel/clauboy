@@ -54,7 +54,7 @@ function loadWindow(
     return { action: 'deny' }
   })
 
-  if (is.dev) {
+  if (is.dev && process.env['OPEN_DEVTOOLS'] === '1') {
     win.webContents.openDevTools({ mode: 'detach' })
   }
 }
