@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Config, DEFAULT_BUTTONS } from '../../shared/types'
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6
@@ -61,6 +61,34 @@ export default function OnboardingApp(): React.ReactElement {
   // Repos for autocomplete in step 3
   const [repos, setRepos] = useState<Array<{ owner: string; name: string }>>([])
 
+  // Load persisted config on mount
+  useEffect(() => {
+    window.clauboy.getConfig().then((saved) => {
+      setConfig((c) => ({
+        ...c,
+        github: {
+          ...c.github,
+          token: saved.github.token || c.github.token,
+          owner: saved.github.owner || c.github.owner,
+          repo: saved.github.repo || c.github.repo,
+          trustedUser: saved.github.trustedUser || c.github.trustedUser,
+          appId: saved.github.appId || c.github.appId,
+          installationId: saved.github.installationId || c.github.installationId,
+          privateKey: saved.github.privateKey || c.github.privateKey,
+        },
+        claudeApiKey: saved.claudeApiKey || c.claudeApiKey,
+        editorCommand: saved.editorCommand || c.editorCommand,
+        docker: { ...c.docker, ...saved.docker },
+      }))
+    }).catch(() => {/* ignore */})
+  }, [])
+
+  // Persist config to disk whenever it changes
+  const isFirstRender = useRef(true)
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return }
+    window.clauboy.saveConfig(config).catch(() => {/* ignore */})
+  }, [config])
 
   const updateGithub = (key: keyof Config['github'], value: string): void => {
     setConfig((c) => ({ ...c, github: { ...c.github, [key]: value } }))
