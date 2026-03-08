@@ -262,7 +262,7 @@ export async function getDockerfilePath(): Promise<string> {
   if (fs.existsSync(resourcePath)) return resourcePath
 
   // Dev fallback
-  const devPath = path.join(__dirname, '..', '..', '..', 'resources', 'Dockerfile')
+  const devPath = path.join(__dirname, '..', '..', 'resources', 'Dockerfile')
   if (fs.existsSync(devPath)) return devPath
 
   throw new Error('Dockerfile not found')

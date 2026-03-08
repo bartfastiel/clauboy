@@ -124,6 +124,8 @@ export const IPC = {
   GITHUB_CREATE_ISSUE_URL: 'github:create-issue-url',
   GITHUB_VALIDATE_TOKEN: 'github:validate-token',
   GITHUB_LIST_REPOS: 'github:list-repos',
+  GITHUB_CREATE_APP: 'github:create-app',
+  GITHUB_GET_INSTALLATION_ID: 'github:get-installation-id',
   ANTHROPIC_VALIDATE_KEY: 'anthropic:validate-key',
   SYSTEM_OPEN_EXTERNAL: 'system:open-external',
   SYSTEM_OPEN_IN_EDITOR: 'system:open-in-editor',

@@ -26,6 +26,7 @@ import { forceSync } from './polling'
 import { cloneRepo } from './worktree'
 import { setLabel, postComment, buildCreateIssueUrl, initGitHub } from './github'
 import { startPolling } from './polling'
+import { createGithubAppViaManifest, getInstallationId } from './github-app-manifest'
 
 export function registerIpcHandlers(): void {
   // Config
@@ -213,6 +214,16 @@ export function registerIpcHandlers(): void {
     const oc = new Octokit({ auth: token })
     const { data } = await oc.repos.listForAuthenticatedUser({ per_page: 100, sort: 'updated' })
     return data.map((r) => ({ owner: r.owner.login, name: r.name }))
+  })
+
+  // GitHub App creation via manifest flow
+  ipcMain.handle(IPC.GITHUB_CREATE_APP, async (_event, owner: string) => {
+    return createGithubAppViaManifest(owner)
+  })
+
+  // Poll for GitHub App installation ID
+  ipcMain.handle(IPC.GITHUB_GET_INSTALLATION_ID, async (_event, appId: string, privateKey: string, owner: string) => {
+    return getInstallationId(appId, privateKey, owner)
   })
 
   // Anthropic API key validation
