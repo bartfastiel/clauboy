@@ -38,54 +38,71 @@ function getConfig(): Config {
   return currentConfig
 }
 
+const CLAUBOY_LABEL_NAMES = new Set<string>([
+  'clauboy', 'clauboy:running', 'clauboy:done', 'clauboy:paused', 'clauboy:error'
+])
+
+function mapIssue(issue: {
+  number: number; title: string; body?: string | null; html_url: string
+  state: string; created_at: string; updated_at: string
+  user?: { login?: string; id?: number; avatar_url?: string } | null
+  labels: Array<string | { name?: string | null; color?: string | null }>
+}): GitHubIssue {
+  return {
+    number: issue.number,
+    title: issue.title,
+    body: issue.body ?? null,
+    html_url: issue.html_url,
+    state: issue.state as 'open' | 'closed',
+    created_at: issue.created_at,
+    updated_at: issue.updated_at,
+    user: {
+      login: issue.user?.login ?? '',
+      id: issue.user?.id ?? 0,
+      avatar_url: issue.user?.avatar_url ?? ''
+    },
+    labels: issue.labels.map((l) => ({
+      name: typeof l === 'string' ? l : (l.name ?? ''),
+      color: typeof l === 'string' ? '' : (l.color ?? '')
+    }))
+  }
+}
+
+// Single API call instead of one-per-label (saves ~4 req/poll at 30 s intervals)
 export async function fetchClauboyIssues(): Promise<GitHubIssue[]> {
   const oc = getOctokit()
   const cfg = getConfig()
 
-  const labelsToCheck: ClauboyLabel[] = [
-    'clauboy',
-    'clauboy:running',
-    'clauboy:done',
-    'clauboy:paused',
-    'clauboy:error'
-  ]
+  const response = await oc.issues.listForRepo({
+    owner: cfg.github.owner,
+    repo: cfg.github.repo,
+    state: 'open',
+    per_page: 100
+  })
 
-  const issueMap = new Map<number, GitHubIssue>()
+  return response.data
+    .filter((issue) =>
+      issue.labels.some((l) => {
+        const name = typeof l === 'string' ? l : (l.name ?? '')
+        return CLAUBOY_LABEL_NAMES.has(name)
+      })
+    )
+    .map(mapIssue)
+}
 
-  for (const label of labelsToCheck) {
-    const response = await oc.issues.listForRepo({
-      owner: cfg.github.owner,
-      repo: cfg.github.repo,
-      labels: label,
-      state: 'open',
-      per_page: 100
-    })
+export async function fetchAllOpenIssues(): Promise<GitHubIssue[]> {
+  const oc = getOctokit()
+  const cfg = getConfig()
 
-    for (const issue of response.data) {
-      if (!issueMap.has(issue.number)) {
-        issueMap.set(issue.number, {
-          number: issue.number,
-          title: issue.title,
-          body: issue.body ?? null,
-          html_url: issue.html_url,
-          state: issue.state as 'open' | 'closed',
-          created_at: issue.created_at,
-          updated_at: issue.updated_at,
-          user: {
-            login: issue.user?.login ?? '',
-            id: issue.user?.id ?? 0,
-            avatar_url: issue.user?.avatar_url ?? ''
-          },
-          labels: issue.labels.map((l) => ({
-            name: typeof l === 'string' ? l : (l.name ?? ''),
-            color: typeof l === 'string' ? '' : (l.color ?? '')
-          }))
-        })
-      }
-    }
-  }
+  const response = await oc.issues.listForRepo({
+    owner: cfg.github.owner,
+    repo: cfg.github.repo,
+    state: 'open',
+    per_page: 100,
+    sort: 'updated'
+  })
 
-  return Array.from(issueMap.values())
+  return response.data.map(mapIssue)
 }
 
 export async function ensureLabelsExist(): Promise<void> {
