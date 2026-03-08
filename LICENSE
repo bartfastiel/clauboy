@@ -1,0 +1,72 @@
+Business Source License 1.1
+
+Licensor: Daniel Schwarz
+
+Licensed Work: Clauboy
+              The Licensed Work is (c) 2026 Daniel Schwarz
+
+Additional Use Grant: You may use, copy, modify, and distribute the
+Licensed Work for non-commercial purposes only, including personal use,
+academic research, open-source projects, and internal evaluation, subject
+to the conditions below.
+
+Change Date: 2030-01-01
+
+Change License: Apache License, Version 2.0
+
+-----------------------------------------------------------------------------
+
+TERMS AND CONDITIONS
+
+1. Non-Commercial Use
+
+   Permission is hereby granted, free of charge, to any person obtaining
+   a copy of this software and associated documentation files (the
+   "Software"), to use, copy, modify, merge, publish, and distribute the
+   Software for NON-COMMERCIAL purposes, subject to the following
+   conditions:
+
+   (a) The above copyright notice and this permission notice shall be
+       included in all copies or substantial portions of the Software.
+
+   (b) You may not use the Software, or any derivative work thereof, in
+       any manner that is primarily intended for or directed toward
+       commercial advantage or monetary compensation.
+
+2. Commercial Use
+
+   Commercial use of this Software — including but not limited to:
+   - use within a for-profit organization,
+   - use in a product or service offered for sale or subscription,
+   - use by consultants on behalf of paying clients,
+   - use in SaaS, PaaS, or hosted services,
+
+   requires a separate written commercial license from the Licensor.
+
+   To obtain a commercial license, contact: github.com/bartfastiel
+
+   Commercial licenses are granted at the Licensor's discretion and are
+   typically provided for a symbolic fee of €1 or free of charge, while
+   the Licensor retains all intellectual property rights.
+
+3. Change Date
+
+   On the Change Date specified above, the Licensed Work will become
+   available under the Change License on the terms and conditions of that
+   license, in addition to the rights granted herein.
+
+4. No Warranty
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
+   NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+   BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN
+   ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+-----------------------------------------------------------------------------
+
+For the full text of the Business Source License 1.1, see:
+https://mariadb.com/bsl11/
