@@ -58,6 +58,10 @@ export default function OnboardingApp(): React.ReactElement {
   const [anthropicValidation, setAnthropicValidation] = useState<ValidationState>('idle')
   const [githubUser, setGithubUser] = useState<{ login: string; name: string | null } | null>(null)
 
+  // Repos for autocomplete in step 3
+  const [repos, setRepos] = useState<Array<{ owner: string; name: string }>>([])
+
+
   const updateGithub = (key: keyof Config['github'], value: string): void => {
     setConfig((c) => ({ ...c, github: { ...c.github, [key]: value } }))
   }
@@ -79,6 +83,17 @@ export default function OnboardingApp(): React.ReactElement {
       const user = await window.clauboy.validateGithubToken(config.github.token)
       setGithubUser(user)
       setGithubValidation('ok')
+      // Pre-fill owner and trustedUser if not yet set
+      setConfig((c) => ({
+        ...c,
+        github: {
+          ...c.github,
+          owner: c.github.owner || user.login,
+          trustedUser: c.github.trustedUser || user.login
+        }
+      }))
+      // Load repos in background for step 3 autocomplete
+      window.clauboy.listRepos(config.github.token).then(setRepos).catch(() => {/* ignore */})
     } catch (err) {
       setGithubValidation('error')
       setError(`GitHub token invalid: ${String(err)}`)
@@ -265,18 +280,34 @@ export default function OnboardingApp(): React.ReactElement {
             <div className="form-group">
               <label>Repository Owner</label>
               <input
+                list="owners-datalist"
                 value={config.github.owner}
                 onChange={(e) => updateGithub('owner', e.target.value)}
                 placeholder="your-org"
               />
+              {repos.length > 0 && (
+                <datalist id="owners-datalist">
+                  {[...new Set(repos.map((r) => r.owner))].map((o) => (
+                    <option key={o} value={o} />
+                  ))}
+                </datalist>
+              )}
             </div>
             <div className="form-group">
               <label>Repository Name</label>
               <input
+                list="repos-datalist"
                 value={config.github.repo}
                 onChange={(e) => updateGithub('repo', e.target.value)}
                 placeholder="my-project"
               />
+              {repos.filter((r) => r.owner === config.github.owner).length > 0 && (
+                <datalist id="repos-datalist">
+                  {repos
+                    .filter((r) => r.owner === config.github.owner)
+                    .map((r) => <option key={r.name} value={r.name} />)}
+                </datalist>
+              )}
             </div>
             <div className="form-group">
               <label>Trusted User (can trigger agents via labels)</label>
