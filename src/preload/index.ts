@@ -27,6 +27,9 @@ const clauboyAPI = {
   teardown: (issueNumber: number): Promise<void> =>
     ipcRenderer.invoke(IPC.AGENT_TEARDOWN, issueNumber),
 
+  retryAgent: (issueNumber: number): Promise<boolean> =>
+    ipcRenderer.invoke(IPC.AGENT_RETRY, issueNumber),
+
   attachTerminal: (issueNumber: number): Promise<void> =>
     ipcRenderer.invoke(IPC.TERMINAL_ATTACH, issueNumber),
 

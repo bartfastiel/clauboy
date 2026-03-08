@@ -227,6 +227,18 @@ export function registerIpcHandlers(): void {
     return true
   })
 
+  // Retry a failed agent by resetting its error state and re-running the poll
+  ipcMain.handle(IPC.AGENT_RETRY, async (_event, issueNumber: number) => {
+    appState.updateIssue(issueNumber, {
+      containerStatus: 'none',
+      errorMessage: null,
+      loadingStep: null,
+      containerId: null
+    })
+    await forceSync()
+    return true
+  })
+
   // GitHub App creation via manifest flow
   ipcMain.handle(IPC.GITHUB_CREATE_APP, async (_event, owner: string) => {
     return createGithubAppViaManifest(owner)

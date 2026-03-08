@@ -231,21 +231,39 @@ export default function AgentApp(): React.ReactElement {
         </div>
       ) : isRunning ? (
         <TerminalComponent issueNumber={issueNumber} />
+      ) : issueState.containerStatus === 'error' ? (
+        <div style={{
+          flex: 1, display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '24px'
+        }}>
+          <span style={{ fontSize: '32px' }}>⚠️</span>
+          <span style={{ color: 'var(--accent-danger)', fontWeight: 600 }}>Failed to start agent</span>
+          {issueState.errorMessage && (
+            <div style={{
+              background: 'var(--bg-secondary)', border: '1px solid var(--border)',
+              borderRadius: 'var(--radius)', padding: '10px 14px',
+              fontFamily: 'monospace', fontSize: '12px', color: 'var(--text-secondary)',
+              maxWidth: '100%', wordBreak: 'break-word', whiteSpace: 'pre-wrap'
+            }}>
+              {issueState.errorMessage}
+            </div>
+          )}
+          <button
+            className="primary"
+            onClick={() => window.clauboy.retryAgent(issueNumber).catch(console.error)}
+          >
+            ↺ Retry
+          </button>
+        </div>
       ) : (
         <div style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '12px',
-          color: 'var(--text-secondary)'
+          flex: 1, display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          gap: '12px', color: 'var(--text-secondary)'
         }}>
           <span style={{ fontSize: '32px' }}>💤</span>
           <span>{t('container_not_running')}</span>
-          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-            Status: {issueState.containerStatus}
-          </span>
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Status: {issueState.containerStatus}</span>
         </div>
       )}
     </div>

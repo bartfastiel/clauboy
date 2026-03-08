@@ -122,6 +122,8 @@ async function runPollTick(): Promise<void> {
             console.error(`Failed to start agent for issue ${issue.number}:`, err)
             issueState.containerStatus = 'error'
             issueState.loadingStep = null
+            issueState.errorMessage = err instanceof Error ? err.message : String(err)
+            appState.updateIssue(issue.number, issueState)
           }
         }
       }
