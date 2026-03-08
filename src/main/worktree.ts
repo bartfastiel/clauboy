@@ -58,6 +58,11 @@ export async function createWorktree(
 
   fs.mkdirSync(path.dirname(wtPath), { recursive: true })
 
+  // Auto-clone if repo doesn't exist yet
+  if (!fs.existsSync(repoDir)) {
+    await cloneRepo(config, () => {})
+  }
+
   // First pull the latest
   const git = simpleGit(repoDir)
   await git.pull()
