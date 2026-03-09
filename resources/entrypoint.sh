@@ -38,6 +38,11 @@ else
     echo "[clauboy] Creating new tmux session: $SESSION"
     tmux new-session -d -s "$SESSION" -x 220 -y 50
     sleep 0.3
+    # Set browser tab title via OSC escape sequence (works with xterm.js/ttyd)
+    TITLE="#${ISSUE_NUMBER}"
+    [ -n "$ISSUE_TITLE" ] && TITLE="#${ISSUE_NUMBER}: ${ISSUE_TITLE}"
+    tmux send-keys -t "$SESSION" "printf '\\033]0;${TITLE}\\007'" Enter
+    sleep 0.1
     tmux send-keys -t "$SESSION" "cd /workspace && claude --dangerously-skip-permissions" Enter
     # Auto-accept the bypass-permissions warning by polling until the prompt appears
     for i in $(seq 1 30); do
@@ -51,15 +56,11 @@ else
 fi
 
 echo "[clauboy] Starting ttyd on port 7681..."
-TITLE="#${ISSUE_NUMBER}"
-if [ -n "$ISSUE_TITLE" ]; then
-    TITLE="#${ISSUE_NUMBER}: ${ISSUE_TITLE}"
-fi
 exec ttyd \
     -p 7681 \
     --writable \
-    --title "$TITLE" \
     -t fontSize=14 \
     -t rendererType=canvas \
+    -t allowTitleChange=true \
     -t 'theme={"background":"#1a1a2e","foreground":"#e0e0e0","cursor":"#00ff88"}' \
     tmux attach-session -t "$SESSION"
