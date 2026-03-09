@@ -259,7 +259,7 @@ export default function DashboardApp(): React.ReactElement {
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-          style={{ fontSize: '11px', padding: '2px 4px', flexShrink: 0 }}
+          style={{ fontSize: '11px', padding: '2px 4px', flex: '0 0 auto', width: 'auto' }}
           title="Sort order"
         >
           <option value="updated">↕ Last updated</option>
