@@ -1,8 +1,56 @@
-import React, { useEffect, useState } from 'react'
-import { Config } from '../../shared/types'
+import React, { useEffect, useState, useRef } from 'react'
+import { Config, LogEntry } from '../../shared/types'
 import { StepTabs } from '../shared/StepTabs'
 
-const STEPS = ['API Keys', 'GitHub Bot', 'Repository', 'Docker', 'General']
+const STEPS = ['API Keys', 'GitHub Bot', 'Repository', 'Docker', 'General', 'Logs']
+
+const LOG_COLORS: Record<string, string> = {
+  info: 'var(--text-secondary)',
+  debug: 'var(--text-muted)',
+  warn: '#e3b341',
+  error: '#f85149'
+}
+
+const logBuffer: LogEntry[] = []
+window.clauboy.onLogData((entry: LogEntry) => {
+  logBuffer.push(entry)
+  if (logBuffer.length > 1000) logBuffer.splice(0, logBuffer.length - 1000)
+})
+
+function LogsTab(): React.ReactElement {
+  const [logs, setLogs] = useState<LogEntry[]>([...logBuffer])
+  const logRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const unsub = window.clauboy.onLogData((entry: LogEntry) => {
+      setLogs((prev) => [...prev.slice(-999), entry])
+    })
+    return unsub
+  }, [])
+
+  useEffect(() => {
+    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight
+  }, [logs])
+
+  return (
+    <div
+      ref={logRef}
+      style={{
+        height: '100%', overflowY: 'auto', fontFamily: 'monospace',
+        fontSize: '11px', lineHeight: '1.6', padding: '8px 0'
+      }}
+    >
+      {logs.length === 0 && <span style={{ color: 'var(--text-muted)' }}>No logs yet…</span>}
+      {logs.map((entry, i) => (
+        <div key={i} style={{ color: LOG_COLORS[entry.level] ?? 'inherit', wordBreak: 'break-all' }}>
+          <span style={{ opacity: 0.6 }}>{entry.ts.slice(11, 19)} </span>
+          <span style={{ fontWeight: entry.level === 'error' ? 700 : 400 }}>[{entry.level.toUpperCase()}] </span>
+          {entry.msg}
+        </div>
+      ))}
+    </div>
+  )
+}
 
 type ValidationState = 'idle' | 'loading' | 'ok' | 'error'
 
@@ -118,7 +166,7 @@ export default function SettingsApp(): React.ReactElement {
       />
 
       {/* Content */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+      <div style={{ flex: 1, overflowY: step === 5 ? 'hidden' : 'auto', padding: step === 5 ? '0 16px' : '16px', display: 'flex', flexDirection: 'column' }}>
 
         {/* Step 0: API Keys */}
         {step === 0 && (
@@ -246,6 +294,9 @@ export default function SettingsApp(): React.ReactElement {
             </div>
           </>
         )}
+
+        {/* Step 5: Logs */}
+        {step === 5 && <LogsTab />}
 
         {error && (
           <div style={{ marginTop: '8px', padding: '10px', background: 'rgba(224,82,82,0.1)', border: '1px solid rgba(224,82,82,0.3)', borderRadius: 'var(--radius)', color: 'var(--accent-danger)', fontSize: '12px' }}>
