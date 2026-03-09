@@ -152,6 +152,18 @@ export default function DashboardApp(): React.ReactElement {
     return window.clauboy.onStateUpdate(setAppState)
   }, [])
 
+  useEffect(() => {
+    const onFocus = (): void => {
+      setAppState((prev) => {
+        const stale = !prev?.lastSyncAt || Date.now() - new Date(prev.lastSyncAt).getTime() > 30_000
+        if (stale) window.clauboy.forceSync().catch(console.error)
+        return prev
+      })
+    }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [])
+
   // Auto-open browse when there are no clauboy issues
   useEffect(() => {
     if (appState && appState.issues.length === 0) setBrowseOpen(true)

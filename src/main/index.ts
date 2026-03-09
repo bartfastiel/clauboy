@@ -3,7 +3,7 @@ import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { loadConfig } from './config'
 import { initGitHub, ensureLabelsExist, fetchClauboyIssues } from './github'
 import { initDocker, listRunningContainers } from './docker'
-import { stopPolling, startActivityPolling, stopActivityPolling } from './polling'
+import { startPolling, stopPolling, startActivityPolling, stopActivityPolling } from './polling'
 import { appState } from './state'
 import {
   createDashboardWindow,
@@ -94,6 +94,7 @@ app.whenReady().then(async () => {
 
       await ensureLabelsExist()
       await startupSync()
+      startPolling(5 * 60 * 1000)
       startActivityPolling()
     } catch (err) {
       console.error('Failed to initialize:', err)

@@ -25,7 +25,7 @@ import {
 } from './docker'
 import { removeWorktree } from './worktree'
 import * as fs from 'fs'
-import { forceSync } from './polling'
+import { forceSync, startPolling, startActivityPolling } from './polling'
 import { cloneRepo } from './worktree'
 import { setLabel, postComment, buildCreateIssueUrl, initGitHub, fetchAllOpenIssues } from './github'
 import { createGithubAppViaManifest, getInstallationId } from './github-app-manifest'
@@ -196,6 +196,8 @@ export function registerIpcHandlers(): void {
     saveConfig(completed)
     initGitHub(completed)
     void forceSync()
+    startPolling(5 * 60 * 1000)
+    startActivityPolling()
     createDashboardWindow()
     return true
   })
