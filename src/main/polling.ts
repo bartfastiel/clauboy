@@ -9,6 +9,7 @@ import { startContainer } from './docker'
 import { createWorktree, worktreeExists, worktreePath } from './worktree'
 import { loadConfig } from './config'
 import { ClauboyLabel, IssueState } from '../shared/types'
+import { logger } from './logger'
 
 let pollingInterval: ReturnType<typeof setInterval> | null = null
 let isPolling = false
@@ -42,7 +43,10 @@ async function runPollTick(): Promise<void> {
   try {
     appState.setState({ isSyncing: true })
     const config = loadConfig()
+    logger.debug(`Poll tick — trustedUser=${config.github.trustedUser} repo=${config.github.owner}/${config.github.repo}`)
+
     const issues = await fetchClauboyIssues()
+    logger.info(`Fetched ${issues.length} clauboy issue(s): ${issues.map((i) => `#${i.number}`).join(', ') || 'none'}`)
 
     const currentState = appState.getState()
     const issueStates: IssueState[] = []
@@ -57,6 +61,8 @@ async function runPollTick(): Promise<void> {
         .filter((name): name is ClauboyLabel =>
           ['clauboy', 'clauboy:running', 'clauboy:done', 'clauboy:paused', 'clauboy:error'].includes(name)
         )
+
+      logger.debug(`Issue #${issue.number} "${issue.title}" — labels=[${clauboyLabels.join(',')}] existingStatus=${existing?.containerStatus ?? 'N/A'}`)
 
       const issueState: IssueState = existing ?? {
         issue,
@@ -73,13 +79,19 @@ async function runPollTick(): Promise<void> {
       issueState.clauboyLabels = clauboyLabels
 
       // Check if we should start a container (trusted user added clauboy label)
-      if (
+      const shouldConsiderStart =
         clauboyLabels.includes('clauboy') &&
         !clauboyLabels.includes('clauboy:running') &&
         !clauboyLabels.includes('clauboy:done') &&
         (issueState.containerStatus === 'none' || issueState.containerStatus === 'stopped')
-      ) {
+
+      logger.debug(`Issue #${issue.number} shouldConsiderStart=${shouldConsiderStart} (containerStatus=${issueState.containerStatus})`)
+
+      if (shouldConsiderStart) {
+        logger.info(`Issue #${issue.number}: checking label events for trusted user "${config.github.trustedUser}"`)
         const events = await getLabelEvents(issue.number)
+        logger.debug(`Issue #${issue.number}: got ${events.length} label event(s)`)
+
         const clauboyLabelEvent = events
           .filter(
             (e) =>
@@ -89,7 +101,11 @@ async function runPollTick(): Promise<void> {
           )
           .pop()
 
-        if (clauboyLabelEvent) {
+        if (!clauboyLabelEvent) {
+          logger.warn(`Issue #${issue.number}: no "clauboy" label event from trustedUser "${config.github.trustedUser}" found — not starting. All labelers: [${events.filter((e) => e.event === 'labeled' && e.label?.name === 'clauboy').map((e) => e.actor?.login).join(', ')}]`)
+        } else {
+          logger.info(`Issue #${issue.number}: trusted user "${clauboyLabelEvent.actor?.login}" labeled at ${clauboyLabelEvent.created_at} — starting agent`)
+
           // Start the agent — show progress without pushing to issueStates twice
           issueState.loadingStep = 'Creating worktree...'
           const alreadyInState = appState.getState().issues.some((i) => i.issue.number === issue.number)
@@ -100,10 +116,13 @@ async function runPollTick(): Promise<void> {
           }
 
           try {
-            const wtPath = worktreeExists(config, issue.number)
+            const wtExists = worktreeExists(config, issue.number)
+            logger.info(`Issue #${issue.number}: worktree exists=${wtExists}`)
+            const wtPath = wtExists
               ? worktreePath(config, issue.number)
               : await createWorktree(config, issue.number)
 
+            logger.info(`Issue #${issue.number}: worktree path="${wtPath}"`)
             issueState.worktreePath = wtPath ?? issueState.worktreePath
             issueState.loadingStep = 'Starting container...'
             appState.updateIssue(issue.number, issueState)
@@ -113,16 +132,19 @@ async function runPollTick(): Promise<void> {
               throw new Error('No worktree path available')
             }
 
+            logger.info(`Issue #${issue.number}: starting Docker container with worktree="${actualWtPath}" image="${config.docker.imageName}"`)
             const containerId = await startContainer(issue.number, config, actualWtPath)
+            logger.info(`Issue #${issue.number}: container started id=${containerId.slice(0, 12)}`)
             issueState.containerId = containerId
             issueState.containerStatus = 'running'
             issueState.loadingStep = null
             appState.updateIssue(issue.number, issueState)
           } catch (err) {
-            console.error(`Failed to start agent for issue ${issue.number}:`, err)
+            const msg = err instanceof Error ? err.message : String(err)
+            logger.error(`Issue #${issue.number}: failed to start agent — ${msg}`)
             issueState.containerStatus = 'error'
             issueState.loadingStep = null
-            issueState.errorMessage = err instanceof Error ? err.message : String(err)
+            issueState.errorMessage = msg
             appState.updateIssue(issue.number, issueState)
           }
         }
@@ -137,6 +159,7 @@ async function runPollTick(): Promise<void> {
           )
 
           if (newComments.length > 0) {
+            logger.info(`Issue #${issue.number}: ${newComments.length} new comment(s), notifying agent`)
             const lastComment = newComments[newComments.length - 1]
             issueState.lastKnownCommentId = lastComment.id
 
@@ -147,7 +170,7 @@ async function runPollTick(): Promise<void> {
             )
           }
         } catch (err) {
-          console.error('Failed to check comments:', err)
+          logger.error(`Issue #${issue.number}: failed to check comments — ${err instanceof Error ? err.message : String(err)}`)
         }
       }
 
@@ -159,8 +182,10 @@ async function runPollTick(): Promise<void> {
       isSyncing: false,
       lastSyncAt: new Date().toISOString()
     })
+    logger.debug(`Poll tick complete — ${issueStates.length} issue(s) in state`)
   } catch (err) {
-    console.error('Poll tick failed:', err)
+    const msg = err instanceof Error ? err.message : String(err)
+    logger.error(`Poll tick failed — ${msg}`)
     appState.setState({ isSyncing: false })
   } finally {
     isPolling = false

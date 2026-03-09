@@ -11,12 +11,16 @@ import {
 } from './windows'
 import { registerIpcHandlers } from './ipc-handlers'
 import { IssueState } from '../shared/types'
+import { logger } from './logger'
 
 async function startupSync(): Promise<void> {
   try {
+    logger.info('Startup sync: fetching issues and Docker containers...')
     const issues = await fetchClauboyIssues()
+    logger.info(`Startup sync: ${issues.length} issue(s) found`)
 
     const runningContainers = await listRunningContainers()
+    logger.info(`Startup sync: ${runningContainers.length} Docker container(s) found: ${runningContainers.map((c) => `issue-${c.issueNumber}(${c.status})`).join(', ') || 'none'}`)
     const containerMap = new Map(
       runningContainers.map((c) => [c.issueNumber, c])
     )
@@ -31,10 +35,16 @@ async function startupSync(): Promise<void> {
           )
         ) as IssueState['clauboyLabels']
 
+      const containerStatus = container
+        ? (container.status === 'running' ? 'running' : 'stopped')
+        : 'none'
+
+      logger.info(`Startup sync: issue #${issue.number} "${issue.title}" — labels=[${clauboyLabels.join(',')}] containerStatus=${containerStatus}`)
+
       return {
         issue,
         containerId: container?.id ?? null,
-        containerStatus: container ? (container.status === 'running' ? 'running' : 'stopped') : 'none',
+        containerStatus,
         worktreePath: null,
         clauboyLabels,
         lastKnownCommentId: null,
@@ -48,8 +58,9 @@ async function startupSync(): Promise<void> {
       isSyncing: false,
       lastSyncAt: new Date().toISOString()
     })
+    logger.info('Startup sync complete')
   } catch (err) {
-    console.error('Startup sync failed:', err)
+    logger.error(`Startup sync failed: ${err instanceof Error ? err.message : String(err)}`)
   }
 }
 

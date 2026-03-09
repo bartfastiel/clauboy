@@ -6,6 +6,8 @@ import * as os from 'os'
 import { WebContents } from 'electron'
 import { Config, IPC } from '../shared/types'
 
+import { logger } from './logger'
+
 let docker: Dockerode | null = null
 
 // Tracks whether any claude -p conversation has been started per issue.
@@ -14,14 +16,16 @@ const conversationStarted = new Map<number, boolean>()
 
 export function initDocker(config: Config): void {
   if (config.docker.socketPath) {
+    logger.info(`Docker: using socketPath=${config.docker.socketPath}`)
     docker = new Dockerode({ socketPath: config.docker.socketPath })
   } else if (config.docker.host) {
+    logger.info(`Docker: using host=${config.docker.host} port=${config.docker.port ?? 2375}`)
     docker = new Dockerode({
       host: config.docker.host,
       port: config.docker.port ?? 2375
     })
   } else {
-    // Windows default
+    logger.info('Docker: using Windows default pipe //./pipe/docker_engine')
     docker = new Dockerode({ socketPath: '//./pipe/docker_engine' })
   }
 }
@@ -37,8 +41,10 @@ function getDocker(): Dockerode {
 export async function checkDocker(): Promise<boolean> {
   try {
     await getDocker().ping()
+    logger.info('Docker: ping OK')
     return true
-  } catch {
+  } catch (err) {
+    logger.error(`Docker: ping failed — ${err instanceof Error ? err.message : String(err)}`)
     return false
   }
 }
@@ -65,12 +71,14 @@ export async function startContainer(
   try {
     const existing = d.getContainer(containerName)
     const info = await existing.inspect()
+    logger.info(`Docker: removing existing container "${containerName}" (running=${info.State.Running})`)
     if (info.State.Running) {
       await existing.stop()
     }
     await existing.remove()
+    logger.info(`Docker: removed old container "${containerName}"`)
   } catch {
-    // Container doesn't exist, that's fine
+    logger.debug(`Docker: no existing container "${containerName}" to remove`)
   }
 
   const env: string[] = []
@@ -126,7 +134,10 @@ export async function startContainer(
     }
   })
 
+  logger.info(`Docker: creating container "${containerName}" image="${config.docker.imageName}" worktree="${absoluteWtPath}"`)
   await container.start()
+  const startInfo = await container.inspect()
+  logger.info(`Docker: container "${containerName}" started — id=${container.id.slice(0, 12)} status=${startInfo.State.Status}`)
   return container.id
 }
 
@@ -136,10 +147,12 @@ export async function stopContainer(containerId: string): Promise<void> {
     const container = d.getContainer(containerId)
     const info = await container.inspect()
     const issueNum = parseInt(info.Config.Labels?.['clauboy.issue'] ?? '0', 10)
+    logger.info(`Docker: stopping container id=${containerId.slice(0, 12)} issue=${issueNum}`)
     if (issueNum) conversationStarted.delete(issueNum)
     await container.stop({ t: 10 })
+    logger.info(`Docker: container id=${containerId.slice(0, 12)} stopped`)
   } catch (err) {
-    console.error('Failed to stop container:', err)
+    logger.error(`Docker: failed to stop container id=${containerId.slice(0, 12)} — ${err instanceof Error ? err.message : String(err)}`)
   }
 }
 
@@ -153,6 +166,7 @@ export async function runAgentPrompt(
   const container = d.getContainer(containerName)
 
   const isContinue = conversationStarted.get(issueNumber) ?? false
+  logger.info(`Docker: running claude in container "${containerName}" isContinue=${isContinue} promptLen=${prompt.length}`)
 
   const exec = await container.exec({
     Cmd: [
@@ -183,10 +197,14 @@ export async function runAgentPrompt(
       d.modem.demuxStream(stream, writer, writer)
 
       stream.on('end', () => {
+        logger.info(`Docker: claude exec finished for issue #${issueNumber}`)
         conversationStarted.set(issueNumber, true)
         resolve()
       })
-      stream.on('error', reject)
+      stream.on('error', (err) => {
+        logger.error(`Docker: claude exec stream error for issue #${issueNumber} — ${err.message}`)
+        reject(err)
+      })
     })
   })
 }
