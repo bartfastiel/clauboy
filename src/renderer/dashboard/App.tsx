@@ -149,7 +149,9 @@ export default function DashboardApp(): React.ReactElement {
 
   const handleCleanupOrphan = (worktreePath: string): void => {
     window.clauboy.confirm(`Remove orphan worktree?\n${worktreePath}`)
-      .then((confirmed) => { if (confirmed) console.log('Remove orphan:', worktreePath) })
+      .then((confirmed) => {
+        if (confirmed) window.clauboy.cleanupOrphan(worktreePath).catch(console.error)
+      })
       .catch(console.error)
   }
 

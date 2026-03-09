@@ -18,11 +18,13 @@ import {
   pullImage,
   checkDocker,
   stopContainer,
+  startContainer,
   getDockerfilePath,
   openAuthTerminal,
   getTerminalPort
 } from './docker'
 import { removeWorktree } from './worktree'
+import * as fs from 'fs'
 import { forceSync } from './polling'
 import { cloneRepo } from './worktree'
 import { setLabel, postComment, buildCreateIssueUrl, initGitHub, fetchAllOpenIssues } from './github'
@@ -257,6 +259,52 @@ export function registerIpcHandlers(): void {
       headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }
     })
     if (!response.ok) throw new Error(`Invalid Anthropic API key (HTTP ${response.status})`)
+    return true
+  })
+
+  // Clean up an orphan worktree (stop any stray container + remove filesystem path)
+  ipcMain.handle(IPC.AGENT_CLEANUP_ORPHAN, async (_event, worktreePath: string) => {
+    // Extract issue number from path if possible and stop a stray container
+    const match = worktreePath.match(/issue-(\d+)/)
+    if (match) {
+      const issueNumber = parseInt(match[1], 10)
+      await stopContainer(`clauboy-issue-${issueNumber}`).catch(() => {})
+    }
+    if (fs.existsSync(worktreePath)) {
+      fs.rmSync(worktreePath, { recursive: true, force: true })
+    }
+    appState.setState({
+      orphanWorktrees: appState.getState().orphanWorktrees.filter((p) => p !== worktreePath)
+    })
+    return true
+  })
+
+  // Pause: stop container + set clauboy:paused label
+  ipcMain.handle(IPC.AGENT_PAUSE, async (_event, issueNumber: number) => {
+    const issueState = appState.getState().issues.find((i) => i.issue.number === issueNumber)
+    if (issueState?.containerId) {
+      await stopContainer(issueState.containerId)
+    }
+    await setLabel(issueNumber, ['clauboy:paused'], ['clauboy:running', 'clauboy:error'])
+    appState.updateIssue(issueNumber, { containerStatus: 'stopped', clauboyLabels: ['clauboy:paused'] })
+    return true
+  })
+
+  // Resume: start container again + remove clauboy:paused label
+  ipcMain.handle(IPC.AGENT_RESUME, async (_event, issueNumber: number) => {
+    const config = loadConfig()
+    const issueState = appState.getState().issues.find((i) => i.issue.number === issueNumber)
+    if (!issueState?.worktreePath) throw new Error('No worktree path found for issue')
+
+    appState.updateIssue(issueNumber, { containerStatus: 'starting', loadingStep: 'Starting container...' })
+    const containerId = await startContainer(issueNumber, config, issueState.worktreePath)
+    await setLabel(issueNumber, ['clauboy:running'], ['clauboy:paused', 'clauboy:error'])
+    appState.updateIssue(issueNumber, {
+      containerId,
+      containerStatus: 'running',
+      loadingStep: null,
+      clauboyLabels: ['clauboy:running']
+    })
     return true
   })
 }

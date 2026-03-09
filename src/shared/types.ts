@@ -151,6 +151,9 @@ export const IPC = {
   ONBOARDING_COMPLETE: 'onboarding:complete',
   AGENT_AUTH_TERMINAL: 'agent:auth-terminal',
   AGENT_TERMINAL_URL: 'agent:terminal-url',
+  AGENT_CLEANUP_ORPHAN: 'agent:cleanup-orphan',
+  AGENT_PAUSE: 'agent:pause',
+  AGENT_RESUME: 'agent:resume',
   LOG_DATA: 'log:data'
 } as const
 
