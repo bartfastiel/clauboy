@@ -33,6 +33,15 @@ function IssueRow({ issueState, onClick }: { issueState: IssueState; onClick: ()
             {issueState.issue.title}
           </span>
         </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '2px' }}>
+          {issueState.issue.labels.map((label) => (
+            <span key={label.name} style={{
+              fontSize: '10px', padding: '1px 6px', borderRadius: '10px',
+              background: `#${label.color}33`, color: `#${label.color}`,
+              border: `1px solid #${label.color}66`
+            }}>{label.name}</span>
+          ))}
+        </div>
         {issueState.loadingStep && (
           <div style={{ fontSize: '11px', color: 'var(--accent)' }}>{issueState.loadingStep}</div>
         )}
@@ -53,10 +62,21 @@ function AllIssueRow({
       display: 'flex', alignItems: 'center', gap: '10px',
     }}>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>#{issue.number} </span>
-        <span style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '13px' }}>
-          {issue.title}
-        </span>
+        <div>
+          <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>#{issue.number} </span>
+          <span style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '13px' }}>
+            {issue.title}
+          </span>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '2px' }}>
+          {issue.labels.map((label) => (
+            <span key={label.name} style={{
+              fontSize: '10px', padding: '1px 6px', borderRadius: '10px',
+              background: `#${label.color}33`, color: `#${label.color}`,
+              border: `1px solid #${label.color}66`
+            }}>{label.name}</span>
+          ))}
+        </div>
       </div>
       {isClauboy
         ? <span className="badge badge-queued" style={{ fontSize: '10px' }}>Queued</span>
