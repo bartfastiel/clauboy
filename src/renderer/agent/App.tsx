@@ -218,12 +218,6 @@ export default function AgentApp(): React.ReactElement {
         gap: '8px',
         minHeight: '40px'
       }}>
-        <span style={{ fontSize: '12px', color: 'var(--text-secondary)', flexShrink: 0 }}>
-          #{issueState.issue.number}
-        </span>
-        <span style={{ fontSize: '13px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}>
-          {issueState.issue.title}
-        </span>
         <ButtonBar
           buttons={config.buttons}
           onAction={handleButtonAction}
