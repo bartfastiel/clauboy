@@ -1,9 +1,9 @@
 import {
   fetchClauboyIssues,
   getLabelEvents,
-  getNewComments,
-  postComment
+  getInstallationToken
 } from './github'
+import { spawn } from 'child_process'
 import { appState } from './state'
 import * as path from 'path'
 import * as fs from 'fs'
@@ -17,6 +17,34 @@ let activityInterval: ReturnType<typeof setInterval> | null = null
 let isPolling = false
 let rateLimitBackoffUntil = 0
 
+const TOKEN_REFRESH_INTERVAL_MS = 45 * 60 * 1000 // 45 minutes
+const lastTokenRefreshAt = new Map<number, number>()
+
+async function refreshContainerToken(issueNumber: number): Promise<void> {
+  const token = await getInstallationToken()
+  if (!token) return
+  const last = lastTokenRefreshAt.get(issueNumber) ?? 0
+  if (Date.now() - last < TOKEN_REFRESH_INTERVAL_MS) return
+  // Mark immediately so retries don't pile up even on failure
+  lastTokenRefreshAt.set(issueNumber, Date.now())
+  return new Promise((resolve) => {
+    // Update GH_TOKEN in the tmux session environment so future gh invocations use the fresh token
+    const proc = spawn('docker', [
+      'exec', `clauboy-issue-${issueNumber}`,
+      'tmux', 'set-environment', '-g', 'GH_TOKEN', token
+    ])
+    proc.on('close', (code) => {
+      if (code === 0) {
+        logger.info(`Issue #${issueNumber}: refreshed GH_TOKEN in tmux environment`)
+      } else {
+        logger.warn(`Issue #${issueNumber}: tmux set-environment failed with code ${code}`)
+      }
+      resolve()
+    })
+    proc.on('error', () => resolve())
+  })
+}
+
 function parseElapsedSeconds(text: string): number | null {
   // Matches patterns like "(14m 28s", "(5s", "(1h 3m 12s"
   const m = text.match(/\((?:(\d+)h\s+)?(?:(\d+)m\s+)?(\d+)s/)
@@ -27,6 +55,7 @@ function parseElapsedSeconds(text: string): number | null {
 async function refreshAgentActivity(): Promise<void> {
   const issues = appState.getState().issues.filter((i) => i.containerStatus === 'running')
   for (const issueState of issues) {
+    void refreshContainerToken(issueState.issue.number)
     try {
       const pane = await captureAgentPane(issueState.issue.number)
       // eslint-disable-next-line no-control-regex
@@ -219,30 +248,6 @@ async function runPollTick(): Promise<void> {
         }
       }
 
-
-      // Check for new comments when container is running
-      if (issueState.containerStatus === 'running') {
-        try {
-          const newComments = await getNewComments(
-            issue.number,
-            issueState.lastKnownCommentId
-          )
-
-          if (newComments.length > 0) {
-            logger.info(`Issue #${issue.number}: ${newComments.length} new comment(s), notifying agent`)
-            const lastComment = newComments[newComments.length - 1]
-            issueState.lastKnownCommentId = lastComment.id
-
-            // Post neutral activity hint (no raw content injected)
-            await postComment(
-              issue.number,
-              `There is new activity on issue #${issue.number}. Please read the latest comments via \`gh issue view ${issue.number} --comments\` and decide how to respond.`
-            )
-          }
-        } catch (err) {
-          logger.error(`Issue #${issue.number}: failed to check comments — ${err instanceof Error ? err.message : String(err)}`)
-        }
-      }
 
       issueStates.push(issueState)
     }
