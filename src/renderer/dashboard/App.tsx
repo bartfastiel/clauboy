@@ -47,6 +47,12 @@ function IssueRow({ issueState, onClick }: { issueState: IssueState; onClick: ()
         )}
       </div>
       <span className={badge.className}>{badge.text}</span>
+      <button
+        className="icon-btn"
+        title="Open issue on GitHub"
+        style={{ fontSize: '13px', flexShrink: 0 }}
+        onClick={(e) => { e.stopPropagation(); window.clauboy.openExternal(issueState.issue.html_url).catch(console.error) }}
+      >↗</button>
     </div>
   )
 }
@@ -78,6 +84,12 @@ function AllIssueRow({
           ))}
         </div>
       </div>
+      <button
+        className="icon-btn"
+        title="Open issue on GitHub"
+        style={{ fontSize: '13px', flexShrink: 0 }}
+        onClick={(e) => { e.stopPropagation(); window.clauboy.openExternal(issue.html_url).catch(console.error) }}
+      >↗</button>
       {isClauboy
         ? <span className="badge badge-queued" style={{ fontSize: '10px' }}>Queued</span>
         : <button style={{ fontSize: '11px', padding: '3px 10px', whiteSpace: 'nowrap' }} disabled={starting} onClick={(e) => { e.stopPropagation(); onStart() }}>
