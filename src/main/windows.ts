@@ -109,6 +109,9 @@ export function createAgentWindow(issueNumber: number, title?: string): BrowserW
 
   loadWindow(win, 'agent', { issue: String(issueNumber) })
 
+  // Prevent the renderer's <title> from overwriting the meaningful window title
+  win.on('page-title-updated', (e) => e.preventDefault())
+
   win.on('closed', () => {
     agentWindows.delete(issueNumber)
   })
