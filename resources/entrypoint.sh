@@ -17,7 +17,7 @@ fi
 # Clone repo into /workspace if empty
 if [ -z "$(ls -A /workspace 2>/dev/null)" ] && [ -n "$GITHUB_OWNER" ] && [ -n "$GITHUB_REPO" ]; then
     echo "[clauboy] Cloning ${GITHUB_OWNER}/${GITHUB_REPO}..."
-    git clone "https://${GH_TOKEN}@github.com/${GITHUB_OWNER}/${GITHUB_REPO}.git" /workspace
+    git clone "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_OWNER}/${GITHUB_REPO}.git" /workspace
     echo "[clauboy] Clone complete"
 fi
 
