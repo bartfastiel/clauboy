@@ -95,13 +95,14 @@ export function createAgentWindow(issueNumber: number, title?: string): BrowserW
   }
 
   const win = new BrowserWindow({
-    width: 900,
-    height: 700,
+    width: 1100,
+    height: 800,
     resizable: true,
     icon: iconPath(),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: false,
+      webviewTag: true
     },
     title: title ? `#${issueNumber} – ${title}` : `#${issueNumber}`
   })

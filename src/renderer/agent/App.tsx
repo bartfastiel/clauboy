@@ -275,6 +275,16 @@ export default function AgentApp(): React.ReactElement {
             🔑 Auth
           </button>
         )}
+        {isRunning && (
+          <button
+            className="icon-btn"
+            onClick={() => window.clauboy.openExternal(`http://localhost:${37680 + issueNumber}`).catch(console.error)}
+            title="Open terminal in browser"
+            style={{ fontSize: '14px', padding: '3px 6px', flexShrink: 0 }}
+          >
+            🌐
+          </button>
+        )}
         {agentIsRunning && (
           <span style={{ fontSize: '11px', color: 'var(--accent)', flexShrink: 0, animation: 'pulse 1s infinite' }}>
             ⟳ thinking…
@@ -314,34 +324,10 @@ export default function AgentApp(): React.ReactElement {
         </div>
       ) : isRunning ? (
         <>
-          <div style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '16px',
-            background: 'var(--bg-primary)'
-          }}>
-            <div style={{ fontSize: '48px' }}>🖥️</div>
-            <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-              Agent terminal running
-            </div>
-            <button
-              className="primary"
-              onClick={() => {
-                window.clauboy.getTerminalUrl(issueNumber).then((url: string) => {
-                  window.clauboy.openExternal(url).catch(console.error)
-                }).catch(console.error)
-              }}
-              style={{ fontSize: '14px', padding: '10px 24px' }}
-            >
-              🌐 Open Terminal in Browser
-            </button>
-            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-              http://localhost:{37680 + issueNumber}
-            </div>
-          </div>
+          <webview
+            src={`http://localhost:${37680 + issueNumber}`}
+            style={{ flex: 1, width: '100%', minHeight: 0 }}
+          />
           <div style={{
             display: 'flex',
             gap: '6px',
@@ -361,7 +347,6 @@ export default function AgentApp(): React.ReactElement {
             />
             <button
               onClick={sendCustomPrompt}
-              disabled={!customPrompt.trim()}
               style={{ fontSize: '12px', padding: '4px 12px', flexShrink: 0 }}
             >
               Send
