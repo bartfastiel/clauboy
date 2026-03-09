@@ -136,7 +136,7 @@ async function runPollTick(): Promise<void> {
             appState.updateIssue(issue.number, issueState)
 
             logger.info(`Issue #${issue.number}: starting Docker container with workspace="${wsPath}" image="${config.docker.imageName}"`)
-            const containerId = await startContainer(issue.number, config, wsPath)
+            const containerId = await startContainer(issue.number, config, wsPath, issue.title)
             logger.info(`Issue #${issue.number}: container started id=${containerId.slice(0, 12)}`)
             issueState.containerId = containerId
             issueState.containerStatus = 'running'

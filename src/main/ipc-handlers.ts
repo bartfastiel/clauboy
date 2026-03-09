@@ -297,7 +297,7 @@ export function registerIpcHandlers(): void {
     if (!issueState?.worktreePath) throw new Error('No worktree path found for issue')
 
     appState.updateIssue(issueNumber, { containerStatus: 'starting', loadingStep: 'Starting container...' })
-    const containerId = await startContainer(issueNumber, config, issueState.worktreePath)
+    const containerId = await startContainer(issueNumber, config, issueState.worktreePath, issueState.issue.title)
     await setLabel(issueNumber, ['clauboy:running'], ['clauboy:paused', 'clauboy:error'])
     appState.updateIssue(issueNumber, {
       containerId,

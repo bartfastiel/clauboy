@@ -58,7 +58,8 @@ export async function ensureNetwork(name: string): Promise<void> {
 export async function startContainer(
   issueNumber: number,
   config: Config,
-  worktreePath: string
+  worktreePath: string,
+  issueTitle = ''
 ): Promise<string> {
   const d = getDocker()
   await ensureNetwork(config.docker.networkName)
@@ -89,6 +90,7 @@ export async function startContainer(
 
   const env: string[] = []
   env.push(`ISSUE_NUMBER=${issueNumber}`)
+  env.push(`ISSUE_TITLE=${issueTitle}`)
   env.push(`GH_TOKEN=${agentGhToken}`)
   env.push(`GITHUB_OWNER=${config.github.owner}`)
   env.push(`GITHUB_REPO=${config.github.repo}`)

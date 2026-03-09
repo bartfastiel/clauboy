@@ -50,9 +50,14 @@ else
 fi
 
 echo "[clauboy] Starting ttyd on port 7681..."
+TITLE="#${ISSUE_NUMBER}"
+if [ -n "$ISSUE_TITLE" ]; then
+    TITLE="#${ISSUE_NUMBER}: ${ISSUE_TITLE}"
+fi
 exec ttyd \
     -p 7681 \
     --writable \
+    --title "$TITLE" \
     -t fontSize=14 \
     -t rendererType=canvas \
     -t 'theme={"background":"#1a1a2e","foreground":"#e0e0e0","cursor":"#00ff88"}' \
