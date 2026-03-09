@@ -2,7 +2,19 @@ import { app, safeStorage } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
 import * as yaml from 'js-yaml'
-import { Config, DEFAULT_BUTTONS } from '../shared/types'
+import { Button, Config, DEFAULT_BUTTONS } from '../shared/types'
+
+// Replace any saved button prompt that still injects {{ISSUE_BODY}} or {{ISSUE_TITLE}}
+// with the safe version from DEFAULT_BUTTONS.
+function migrateButtons(buttons: Button[]): Button[] {
+  return buttons.map((btn) => {
+    if (btn.prompt && (btn.prompt.includes('{{ISSUE_BODY}}') || btn.prompt.includes('{{ISSUE_TITLE}}'))) {
+      const safe = DEFAULT_BUTTONS.find((d) => d.id === btn.id)
+      if (safe) return safe
+    }
+    return btn
+  })
+}
 
 // CLAUBOY_CONFIG_DIR allows tests (and portable installs) to redirect config
 // without touching Electron's HOME or USERPROFILE, which would crash the process.
@@ -153,7 +165,7 @@ export function saveConfig(config: Config): void {
       installationId: config.github.installationId
     },
     docker: config.docker,
-    buttons: config.buttons,
+    buttons: migrateButtons(config.buttons),
     language: config.language,
     editorCommand: config.editorCommand,
     cloneDir: config.cloneDir,
