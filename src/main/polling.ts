@@ -165,7 +165,7 @@ async function runPollTick(): Promise<void> {
             // Post neutral activity hint (no raw content injected)
             await postComment(
               issue.number,
-              `Es gibt neue Aktivität in Issue #${issue.number}. Bitte lies die aktuellen Kommentare via GitHub CLI und entscheide selbst wie du reagierst.`
+              `There is new activity on issue #${issue.number}. Please read the latest comments via \`gh issue view ${issue.number} --comments\` and decide how to respond.`
             )
           }
         } catch (err) {

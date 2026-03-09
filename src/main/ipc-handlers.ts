@@ -177,11 +177,11 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IPC.SYSTEM_CONFIRM, async (_event, message: string) => {
     const result = await dialog.showMessageBox({
       type: 'question',
-      buttons: ['Ja', 'Abbrechen'],
+      buttons: ['Yes', 'Cancel'],
       defaultId: 0,
       cancelId: 1,
       message,
-      title: 'Bestätigung'
+      title: 'Confirm'
     })
     return result.response === 0
   })
