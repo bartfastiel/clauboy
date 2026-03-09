@@ -122,7 +122,13 @@ const clauboyAPI = {
   openButtonEditor: (): Promise<void> => ipcRenderer.invoke('window:button-editor'),
 
   openAuthTerminal: (issueNumber: number): Promise<void> =>
-    ipcRenderer.invoke(IPC.AGENT_AUTH_TERMINAL, issueNumber)
+    ipcRenderer.invoke(IPC.AGENT_AUTH_TERMINAL, issueNumber),
+
+  onLogData: (cb: (entry: import('../shared/types').LogEntry) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, entry: import('../shared/types').LogEntry): void => cb(entry)
+    ipcRenderer.on(IPC.LOG_DATA, handler)
+    return () => ipcRenderer.removeListener(IPC.LOG_DATA, handler)
+  }
 }
 
 contextBridge.exposeInMainWorld('clauboy', clauboyAPI)

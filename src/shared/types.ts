@@ -1,5 +1,14 @@
 // Shared types used by both main and renderer processes
 
+export type LogLevel = 'info' | 'warn' | 'error' | 'debug'
+
+export interface LogEntry {
+  ts: string
+  level: LogLevel
+  msg: string
+}
+
+
 export type ButtonType = 'prompt' | 'ide' | 'web' | 'teardown'
 
 export interface Button {
@@ -139,7 +148,8 @@ export const IPC = {
   SYSTEM_OPEN_IN_EDITOR: 'system:open-in-editor',
   SYSTEM_CONFIRM: 'system:confirm',
   ONBOARDING_COMPLETE: 'onboarding:complete',
-  AGENT_AUTH_TERMINAL: 'agent:auth-terminal'
+  AGENT_AUTH_TERMINAL: 'agent:auth-terminal',
+  LOG_DATA: 'log:data'
 } as const
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC]
