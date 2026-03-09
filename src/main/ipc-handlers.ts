@@ -28,7 +28,6 @@ import * as fs from 'fs'
 import { forceSync } from './polling'
 import { cloneRepo } from './worktree'
 import { setLabel, postComment, buildCreateIssueUrl, initGitHub, fetchAllOpenIssues } from './github'
-import { startPolling } from './polling'
 import { createGithubAppViaManifest, getInstallationId } from './github-app-manifest'
 
 export function registerIpcHandlers(): void {
@@ -193,7 +192,7 @@ export function registerIpcHandlers(): void {
     const completed = { ...config, setupComplete: true }
     saveConfig(completed)
     initGitHub(completed)
-    startPolling()
+    void forceSync()
     createDashboardWindow()
     return true
   })
