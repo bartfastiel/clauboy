@@ -77,7 +77,7 @@ async function runPollTick(): Promise<void> {
         clauboyLabels.includes('clauboy') &&
         !clauboyLabels.includes('clauboy:running') &&
         !clauboyLabels.includes('clauboy:done') &&
-        issueState.containerStatus === 'none'
+        (issueState.containerStatus === 'none' || issueState.containerStatus === 'stopped')
       ) {
         const events = await getLabelEvents(issue.number)
         const clauboyLabelEvent = events
