@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import type { AppState, Button, Config, IssueState, LogEntry } from '../../shared/types'
 import { useI18n } from '../shared/useI18n'
 
@@ -175,10 +175,8 @@ export default function AgentApp(): React.ReactElement {
   })
   const [issueState, setIssueState] = useState<IssueState | null>(null)
   const [config, setConfig] = useState<Config | null>(null)
-  const [customPrompt, setCustomPrompt] = useState('')
   const [terminalReady, setTerminalReady] = useState(false)
   const webviewRef = useRef<Electron.WebviewTag>(null)
-  const customPromptRef = useRef<HTMLInputElement>(null)
   const { t } = useI18n()
 
   useEffect(() => {
@@ -237,12 +235,6 @@ export default function AgentApp(): React.ReactElement {
     }
   }
 
-  const sendCustomPrompt = useCallback(() => {
-    if (!customPrompt.trim()) return
-    window.clauboy.injectPrompt(issueNumber, customPrompt.trim()).catch(console.error)
-    setCustomPrompt('')
-  }, [customPrompt, issueNumber])
-
   const prevRunning = React.useRef(false)
   const isLoading = issueState?.loadingStep !== null && issueState?.loadingStep !== undefined
   const isRunning = issueState?.containerStatus === 'running'
@@ -259,7 +251,7 @@ export default function AgentApp(): React.ReactElement {
     if (!wv) return
     const handler = (): void => setTerminalReady(true)
     wv.addEventListener('dom-ready', handler)
-    return () => wv.removeEventListener('dom-ready', handler)
+    return () => { wv.removeEventListener('dom-ready', handler) }
   }, [isRunning])
   const isPaused = issueState?.clauboyLabels?.includes('clauboy:paused') ?? false
   const agentIsRunning = issueState?.agentIsRunning ?? false
@@ -387,32 +379,6 @@ export default function AgentApp(): React.ReactElement {
               src={`http://localhost:${issueState.terminalPort ?? (37680 + issueNumber)}`}
               style={{ width: '100%', height: '100%' }}
             />
-          </div>
-          <div style={{
-            display: 'flex',
-            gap: '6px',
-            padding: '6px 8px',
-            borderTop: '1px solid var(--border)',
-            background: 'var(--bg-secondary)',
-            flexShrink: 0
-          }}>
-            <input
-              ref={customPromptRef}
-              type="text"
-              value={customPrompt}
-              onChange={(e) => setCustomPrompt(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') sendCustomPrompt() }}
-              placeholder="Inject prompt… (Enter to send)"
-              disabled={agentIsRunning}
-              style={{ flex: 1, fontSize: '12px', padding: '4px 8px', opacity: agentIsRunning ? 0.5 : 1 }}
-            />
-            <button
-              onClick={sendCustomPrompt}
-              disabled={agentIsRunning || !customPrompt.trim()}
-              style={{ fontSize: '12px', padding: '4px 12px', flexShrink: 0 }}
-            >
-              {agentIsRunning ? '⟳' : 'Send'}
-            </button>
           </div>
         </>
       ) : issueState.containerStatus === 'error' ? (
