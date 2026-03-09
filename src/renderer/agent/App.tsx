@@ -187,7 +187,11 @@ export default function AgentApp(): React.ReactElement {
   React.useEffect(() => {
     const wv = webviewRef.current
     if (!wv) return
-    const handler = (): void => setTerminalReady(true)
+    const handler = (): void => {
+      setTerminalReady(true)
+      // Auto-focus so the first keystroke reaches the terminal without an extra click
+      wv.focus()
+    }
     wv.addEventListener('dom-ready', handler)
     return () => { wv.removeEventListener('dom-ready', handler) }
   }, [isRunning])
