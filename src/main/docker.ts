@@ -8,6 +8,8 @@ import { Config } from '../shared/types'
 
 import { logger } from './logger'
 
+export const TERMINAL_PORT_BASE = 37680
+
 let docker: Dockerode | null = null
 
 export function initDocker(config: Config): void {
@@ -137,7 +139,7 @@ export async function startContainer(
     NetworkMode: config.docker.networkName,
     Binds: binds,
     PortBindings: {
-      '7681/tcp': [{ HostPort: String(37680 + issueNumber) }]
+      '7681/tcp': [{ HostPort: String(TERMINAL_PORT_BASE + issueNumber) }]
     }
   }
 
@@ -217,7 +219,7 @@ export async function runAgentPrompt(
 }
 
 export function getTerminalPort(issueNumber: number): number {
-  return 37680 + issueNumber
+  return TERMINAL_PORT_BASE + issueNumber
 }
 
 export async function buildImage(

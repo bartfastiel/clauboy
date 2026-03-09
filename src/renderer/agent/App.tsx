@@ -305,7 +305,7 @@ export default function AgentApp(): React.ReactElement {
         {isRunning && (
           <button
             className="icon-btn"
-            onClick={() => window.clauboy.openExternal(`http://localhost:${37680 + issueNumber}`).catch(console.error)}
+            onClick={() => window.clauboy.openExternal(`http://localhost:${issueState.terminalPort ?? (37680 + issueNumber)}`).catch(console.error)}
             title="Open terminal in browser"
             style={{ fontSize: '14px', padding: '3px 6px', flexShrink: 0 }}
           >
@@ -352,7 +352,7 @@ export default function AgentApp(): React.ReactElement {
       ) : isRunning ? (
         <>
           <webview
-            src={`http://localhost:${37680 + issueNumber}`}
+            src={`http://localhost:${issueState.terminalPort ?? (37680 + issueNumber)}`}
             style={{ flex: 1, width: '100%', minHeight: 0 }}
           />
           <div style={{

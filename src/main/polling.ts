@@ -7,7 +7,7 @@ import {
 import { appState } from './state'
 import * as path from 'path'
 import * as fs from 'fs'
-import { startContainer } from './docker'
+import { startContainer, TERMINAL_PORT_BASE } from './docker'
 import { loadConfig } from './config'
 import { ClauboyLabel, IssueState } from '../shared/types'
 import { logger } from './logger'
@@ -135,7 +135,7 @@ async function runPollTick(): Promise<void> {
             logger.info(`Issue #${issue.number}: container started id=${containerId.slice(0, 12)}`)
             issueState.containerId = containerId
             issueState.containerStatus = 'running'
-            issueState.terminalPort = 37680 + issue.number
+            issueState.terminalPort = TERMINAL_PORT_BASE + issue.number
             issueState.loadingStep = null
             appState.updateIssue(issue.number, issueState)
           } catch (err) {
