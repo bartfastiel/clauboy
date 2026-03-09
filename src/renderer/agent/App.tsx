@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import type { AppState, Button, Config, IssueState, LogEntry } from '../../shared/types'
 import { useI18n } from '../shared/useI18n'
-import TerminalComponent from './Terminal'
 
 const LOG_COLORS: Record<string, string> = {
   info: 'var(--text-secondary)',
@@ -227,10 +226,10 @@ export default function AgentApp(): React.ReactElement {
   }
 
   const sendCustomPrompt = useCallback(() => {
-    if (!customPrompt.trim() || issueState?.agentIsRunning) return
+    if (!customPrompt.trim()) return
     window.clauboy.injectPrompt(issueNumber, customPrompt.trim()).catch(console.error)
     setCustomPrompt('')
-  }, [customPrompt, issueNumber, issueState?.agentIsRunning])
+  }, [customPrompt, issueNumber])
 
   const isLoading = issueState?.loadingStep !== null && issueState?.loadingStep !== undefined
   const isRunning = issueState?.containerStatus === 'running'
@@ -315,7 +314,34 @@ export default function AgentApp(): React.ReactElement {
         </div>
       ) : isRunning ? (
         <>
-          <TerminalComponent issueNumber={issueNumber} />
+          <div style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '16px',
+            background: 'var(--bg-primary)'
+          }}>
+            <div style={{ fontSize: '48px' }}>🖥️</div>
+            <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+              Agent terminal running
+            </div>
+            <button
+              className="primary"
+              onClick={() => {
+                window.clauboy.getTerminalUrl(issueNumber).then((url: string) => {
+                  window.clauboy.openExternal(url).catch(console.error)
+                }).catch(console.error)
+              }}
+              style={{ fontSize: '14px', padding: '10px 24px' }}
+            >
+              🌐 Open Terminal in Browser
+            </button>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+              http://localhost:{37680 + issueNumber}
+            </div>
+          </div>
           <div style={{
             display: 'flex',
             gap: '6px',
@@ -330,13 +356,12 @@ export default function AgentApp(): React.ReactElement {
               value={customPrompt}
               onChange={(e) => setCustomPrompt(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') sendCustomPrompt() }}
-              disabled={agentIsRunning}
-              placeholder="Custom prompt… (Enter to send)"
+              placeholder="Inject prompt… (Enter to send)"
               style={{ flex: 1, fontSize: '12px', padding: '4px 8px' }}
             />
             <button
               onClick={sendCustomPrompt}
-              disabled={agentIsRunning || !customPrompt.trim()}
+              disabled={!customPrompt.trim()}
               style={{ fontSize: '12px', padding: '4px 12px', flexShrink: 0 }}
             >
               Send

@@ -68,6 +68,7 @@ export interface IssueState {
   containerId: string | null
   containerStatus: ContainerStatus
   worktreePath: string | null
+  terminalPort: number | null
   clauboyLabels: ClauboyLabel[]
   lastKnownCommentId: number | null
   loadingStep: string | null
@@ -149,6 +150,7 @@ export const IPC = {
   SYSTEM_CONFIRM: 'system:confirm',
   ONBOARDING_COMPLETE: 'onboarding:complete',
   AGENT_AUTH_TERMINAL: 'agent:auth-terminal',
+  AGENT_TERMINAL_URL: 'agent:terminal-url',
   LOG_DATA: 'log:data'
 } as const
 

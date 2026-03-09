@@ -19,7 +19,8 @@ import {
   checkDocker,
   stopContainer,
   getDockerfilePath,
-  openAuthTerminal
+  openAuthTerminal,
+  getTerminalPort
 } from './docker'
 import { removeWorktree } from './worktree'
 import { forceSync } from './polling'
@@ -47,14 +48,20 @@ export function registerIpcHandlers(): void {
     createAgentWindow(issueNumber, issueState?.issue.title)
   })
 
-  // Prompt injection: runs claude -p (or -c -p for follow-ups) via docker exec
-  ipcMain.handle(IPC.AGENT_INJECT_PROMPT, async (event, issueNumber: number, prompt: string) => {
+  // Prompt injection: injects via tmux send-keys into the interactive claude session
+  ipcMain.handle(IPC.AGENT_INJECT_PROMPT, async (_event, issueNumber: number, prompt: string) => {
     appState.updateIssue(issueNumber, { agentIsRunning: true })
     try {
-      await runAgentPrompt(issueNumber, prompt, event.sender)
+      await runAgentPrompt(issueNumber, prompt)
     } finally {
-      appState.updateIssue(issueNumber, { agentIsRunning: false })
+      // With tmux interactive mode, we return quickly — reset after a short delay
+      setTimeout(() => appState.updateIssue(issueNumber, { agentIsRunning: false }), 2000)
     }
+  })
+
+  // Terminal URL for the ttyd web terminal
+  ipcMain.handle(IPC.AGENT_TERMINAL_URL, (_event, issueNumber: number) => {
+    return `http://localhost:${getTerminalPort(issueNumber)}`
   })
 
   // Teardown workflow

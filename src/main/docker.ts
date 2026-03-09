@@ -4,15 +4,11 @@ import * as path from 'path'
 import * as fs from 'fs'
 import * as os from 'os'
 import { WebContents } from 'electron'
-import { Config, IPC } from '../shared/types'
+import { Config } from '../shared/types'
 
 import { logger } from './logger'
 
 let docker: Dockerode | null = null
-
-// Tracks whether any claude -p conversation has been started per issue.
-// When true, subsequent prompts use -c to continue the conversation.
-const conversationStarted = new Map<number, boolean>()
 
 export function initDocker(config: Config): void {
   if (config.docker.socketPath) {
@@ -82,9 +78,6 @@ export async function startContainer(
   }
 
   const env: string[] = []
-  if (config.claudeApiKey) {
-    env.push(`ANTHROPIC_API_KEY=${config.claudeApiKey}`)
-  }
   env.push(`ISSUE_NUMBER=${issueNumber}`)
   env.push(`GH_TOKEN=${config.github.token}`)
   env.push(`GITHUB_OWNER=${config.github.owner}`)
@@ -109,12 +102,43 @@ export async function startContainer(
     logger.info('Docker: synced OAuth credentials from host ~/.claude to container auth dir')
   }
 
+  // Sync ~/.claude.json (main config, lives OUTSIDE ~/.claude/) so Claude skips
+  // the first-run theme/login wizard. Same approach as claude-code-docker.
+  const hostClaudeJson = path.join(os.homedir(), '.claude.json')
+  const authClaudeJson = path.join(claudeAuthDir, '..', 'claude.json')
+  if (fs.existsSync(hostClaudeJson)) {
+    fs.copyFileSync(hostClaudeJson, authClaudeJson)
+    logger.info('Docker: synced ~/.claude.json from host')
+  } else {
+    // Attempt restore from largest backup inside ~/.claude/backups/ (same fallback as claude-code-docker)
+    const backupsDir = path.join(os.homedir(), '.claude', 'backups')
+    if (fs.existsSync(backupsDir)) {
+      const backups = fs.readdirSync(backupsDir)
+        .filter((f) => f.startsWith('.claude.json.backup.'))
+        .map((f) => ({ f, size: fs.statSync(path.join(backupsDir, f)).size }))
+        .sort((a, b) => b.size - a.size)
+      if (backups.length > 0) {
+        fs.copyFileSync(path.join(backupsDir, backups[0].f), authClaudeJson)
+        logger.info(`Docker: restored ~/.claude.json from backup ${backups[0].f}`)
+      }
+    }
+  }
+
+  const binds = [
+    `${absoluteWtPath}:/workspace`,
+    `${claudeAuthDir.replace(/\\/g, '/')}:/home/agent/.claude`
+  ]
+  const normalizedAuthClaudeJson = path.resolve(authClaudeJson).replace(/\\/g, '/')
+  if (fs.existsSync(authClaudeJson)) {
+    binds.push(`${normalizedAuthClaudeJson}:/home/agent/.claude.json`)
+  }
+
   const hostConfig: Dockerode.HostConfig = {
     NetworkMode: config.docker.networkName,
-    Binds: [
-      `${absoluteWtPath}:/workspace`,
-      `${claudeAuthDir.replace(/\\/g, '/')}:/home/agent/.claude`
-    ]
+    Binds: binds,
+    PortBindings: {
+      '7681/tcp': [{ HostPort: String(37680 + issueNumber) }]
+    }
   }
 
   if (config.docker.memoryLimit) {
@@ -126,15 +150,14 @@ export async function startContainer(
     hostConfig.NanoCpus = Math.floor(parseFloat(config.docker.cpuLimit) * 1e9)
   }
 
-  // Reset conversation state when (re)creating a container
-  conversationStarted.delete(issueNumber)
-
   const container = await d.createContainer({
     Image: config.docker.imageName,
     name: containerName,
-    Cmd: ['sleep', 'infinity'],
     Env: env,
     WorkingDir: '/workspace',
+    ExposedPorts: {
+      '7681/tcp': {}
+    },
     HostConfig: hostConfig,
     Labels: {
       'clauboy.issue': String(issueNumber),
@@ -156,7 +179,6 @@ export async function stopContainer(containerId: string): Promise<void> {
     const info = await container.inspect()
     const issueNum = parseInt(info.Config.Labels?.['clauboy.issue'] ?? '0', 10)
     logger.info(`Docker: stopping container id=${containerId.slice(0, 12)} issue=${issueNum}`)
-    if (issueNum) conversationStarted.delete(issueNum)
     await container.stop({ t: 10 })
     logger.info(`Docker: container id=${containerId.slice(0, 12)} stopped`)
   } catch (err) {
@@ -167,58 +189,31 @@ export async function stopContainer(containerId: string): Promise<void> {
 export async function runAgentPrompt(
   issueNumber: number,
   prompt: string,
-  webContents: WebContents
+  _webContents?: WebContents
 ): Promise<void> {
-  const d = getDocker()
   const containerName = `clauboy-issue-${issueNumber}`
-  const container = d.getContainer(containerName)
-
-  const isContinue = conversationStarted.get(issueNumber) ?? false
-  logger.info(`Docker: running claude in container "${containerName}" isContinue=${isContinue} promptLen=${prompt.length}`)
-
-  const exec = await container.exec({
-    Cmd: [
-      'claude',
-      '--dangerously-skip-permissions',
-      ...(isContinue ? ['-c'] : []),
-      '-p',
-      prompt
-    ],
-    AttachStdout: true,
-    AttachStderr: true,
-    User: 'agent',
-    // Unset ANTHROPIC_API_KEY so OAuth credentials in ~/.claude/.credentials.json
-    // are used instead of a potentially empty/invalid API key
-    Env: ['ANTHROPIC_API_KEY=']
-  })
+  logger.info(`Docker: injecting prompt into tmux for issue #${issueNumber} (${prompt.length} chars)`)
 
   await new Promise<void>((resolve, reject) => {
-    exec.start({}, (err: Error | null, stream: NodeJS.ReadableStream | undefined) => {
-      if (err) return reject(err)
-      if (!stream) return reject(new Error('No stream returned from exec.start'))
-
-      const writer = {
-        write: (chunk: Buffer): boolean => {
-          if (!webContents.isDestroyed()) {
-            webContents.send(IPC.TERMINAL_DATA, chunk.toString('base64'))
-          }
-          return true
-        }
-      }
-
-      d.modem.demuxStream(stream, writer as unknown as NodeJS.WritableStream, writer as unknown as NodeJS.WritableStream)
-
-      stream.on('end', () => {
-        logger.info(`Docker: claude exec finished for issue #${issueNumber}`)
-        conversationStarted.set(issueNumber, true)
+    const proc = spawn('docker', [
+      'exec', containerName,
+      'tmux', 'send-keys', '-t', 'claude-agent',
+      prompt, 'Enter'
+    ])
+    proc.on('close', (code) => {
+      if (code === 0) {
+        logger.info(`Docker: prompt injected for issue #${issueNumber}`)
         resolve()
-      })
-      stream.on('error', (streamErr: Error) => {
-        logger.error(`Docker: claude exec stream error for issue #${issueNumber} — ${streamErr.message}`)
-        reject(streamErr)
-      })
+      } else {
+        reject(new Error(`tmux send-keys failed with code ${code}`))
+      }
     })
+    proc.on('error', reject)
   })
+}
+
+export function getTerminalPort(issueNumber: number): number {
+  return 37680 + issueNumber
 }
 
 export async function buildImage(

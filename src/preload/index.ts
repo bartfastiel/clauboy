@@ -124,6 +124,9 @@ const clauboyAPI = {
   openAuthTerminal: (issueNumber: number): Promise<void> =>
     ipcRenderer.invoke(IPC.AGENT_AUTH_TERMINAL, issueNumber),
 
+  getTerminalUrl: (issueNumber: number): Promise<string> =>
+    ipcRenderer.invoke(IPC.AGENT_TERMINAL_URL, issueNumber),
+
   onLogData: (cb: (entry: import('../shared/types').LogEntry) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, entry: import('../shared/types').LogEntry): void => cb(entry)
     ipcRenderer.on(IPC.LOG_DATA, handler)

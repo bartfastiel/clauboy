@@ -5,8 +5,9 @@ import {
   postComment
 } from './github'
 import { appState } from './state'
+import * as path from 'path'
+import * as fs from 'fs'
 import { startContainer } from './docker'
-import { createWorktree, worktreeExists, worktreePath } from './worktree'
 import { loadConfig } from './config'
 import { ClauboyLabel, IssueState } from '../shared/types'
 import { logger } from './logger'
@@ -69,6 +70,7 @@ async function runPollTick(): Promise<void> {
         containerId: null,
         containerStatus: 'none',
         worktreePath: null,
+        terminalPort: null,
         clauboyLabels,
         lastKnownCommentId: null,
         loadingStep: null
@@ -107,7 +109,7 @@ async function runPollTick(): Promise<void> {
           logger.info(`Issue #${issue.number}: trusted user "${clauboyLabelEvent.actor?.login}" labeled at ${clauboyLabelEvent.created_at} — starting agent`)
 
           // Start the agent — show progress without pushing to issueStates twice
-          issueState.loadingStep = 'Creating worktree...'
+          issueState.loadingStep = 'Starting container...'
           const alreadyInState = appState.getState().issues.some((i) => i.issue.number === issue.number)
           if (alreadyInState) {
             appState.updateIssue(issue.number, issueState)
@@ -116,27 +118,24 @@ async function runPollTick(): Promise<void> {
           }
 
           try {
-            const wtExists = worktreeExists(config, issue.number)
-            logger.info(`Issue #${issue.number}: worktree exists=${wtExists}`)
-            const wtPath = wtExists
-              ? worktreePath(config, issue.number)
-              : await createWorktree(config, issue.number)
-
-            logger.info(`Issue #${issue.number}: worktree path="${wtPath}"`)
-            issueState.worktreePath = wtPath ?? issueState.worktreePath
+            const wsPath = path.join(
+              config.cloneDir ?? '',
+              `${config.github.owner}-${config.github.repo}`,
+              'workspaces',
+              `issue-${issue.number}`
+            )
+            fs.mkdirSync(wsPath, { recursive: true })
+            logger.info(`Issue #${issue.number}: workspace path="${wsPath}"`)
+            issueState.worktreePath = wsPath
             issueState.loadingStep = 'Starting container...'
             appState.updateIssue(issue.number, issueState)
 
-            const actualWtPath = issueState.worktreePath
-            if (!actualWtPath) {
-              throw new Error('No worktree path available')
-            }
-
-            logger.info(`Issue #${issue.number}: starting Docker container with worktree="${actualWtPath}" image="${config.docker.imageName}"`)
-            const containerId = await startContainer(issue.number, config, actualWtPath)
+            logger.info(`Issue #${issue.number}: starting Docker container with workspace="${wsPath}" image="${config.docker.imageName}"`)
+            const containerId = await startContainer(issue.number, config, wsPath)
             logger.info(`Issue #${issue.number}: container started id=${containerId.slice(0, 12)}`)
             issueState.containerId = containerId
             issueState.containerStatus = 'running'
+            issueState.terminalPort = 37680 + issue.number
             issueState.loadingStep = null
             appState.updateIssue(issue.number, issueState)
           } catch (err) {
