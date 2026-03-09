@@ -1,7 +1,70 @@
-import React, { useEffect, useState } from 'react'
-import { AppState, IssueState, ClauboyLabel, GitHubIssue } from '../../shared/types'
+import React, { useEffect, useState, useRef } from 'react'
+import { AppState, IssueState, ClauboyLabel, GitHubIssue, LogEntry } from '../../shared/types'
 import { VERSION } from '../../shared/version'
 import { useI18n } from '../shared/useI18n'
+
+const LOG_COLORS: Record<string, string> = {
+  info: 'var(--text-secondary)',
+  debug: 'var(--text-muted)',
+  warn: '#e3b341',
+  error: '#f85149'
+}
+
+function LogPopup({ onClose }: { onClose: () => void }): React.ReactElement {
+  const [logs, setLogs] = useState<LogEntry[]>([])
+  const logRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const unsub = window.clauboy.onLogData((entry: LogEntry) => {
+      setLogs((prev) => [...prev.slice(-999), entry])
+    })
+    return unsub
+  }, [])
+
+  useEffect(() => {
+    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight
+  }, [logs])
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+      display: 'flex', alignItems: 'flex-end', zIndex: 200
+    }} onClick={onClose}>
+      <div
+        style={{
+          width: '100%', maxHeight: '50vh', background: 'var(--bg-tertiary)',
+          borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '4px 12px', borderBottom: '1px solid var(--border)',
+          fontSize: '12px', fontWeight: 600
+        }}>
+          <span>System Logs</span>
+          <button className="icon-btn" style={{ fontSize: '14px' }} onClick={onClose}>✕</button>
+        </div>
+        <div
+          ref={logRef}
+          style={{
+            flex: 1, overflowY: 'auto', padding: '6px 12px',
+            fontFamily: 'monospace', fontSize: '11px', lineHeight: '1.6'
+          }}
+        >
+          {logs.length === 0 && <span style={{ color: 'var(--text-muted)' }}>No logs yet…</span>}
+          {logs.map((entry, i) => (
+            <div key={i} style={{ color: LOG_COLORS[entry.level] ?? 'inherit', wordBreak: 'break-all' }}>
+              <span style={{ opacity: 0.6 }}>{entry.ts.slice(11, 19)} </span>
+              <span style={{ fontWeight: entry.level === 'error' ? 700 : 400 }}>[{entry.level.toUpperCase()}] </span>
+              {entry.msg}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function getLabelBadge(labels: ClauboyLabel[]): { text: string; className: string } {
   if (labels.includes('clauboy:running')) return { text: 'Running', className: 'badge badge-running' }
@@ -124,6 +187,7 @@ export default function DashboardApp(): React.ReactElement {
   const [allLoading, setAllLoading] = useState(false)
   const [startingIssue, setStartingIssue] = useState<number | null>(null)
   const [filter, setFilter] = useState('')
+  const [logsOpen, setLogsOpen] = useState(false)
   const { t } = useI18n()
 
   useEffect(() => {
@@ -185,6 +249,7 @@ export default function DashboardApp(): React.ReactElement {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {logsOpen && <LogPopup onClose={() => setLogsOpen(false)} />}
       {/* Toolbar */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '8px 12px', borderBottom: '1px solid var(--border)', gap: '8px', background: 'var(--bg-secondary)' }}>
         <span style={{ fontWeight: 700, fontSize: '15px' }}>🤠</span>
@@ -203,6 +268,7 @@ export default function DashboardApp(): React.ReactElement {
           title="Browse all issues"
         >📋</button>
         <button className="icon-btn" onClick={handleForceSync} title={t('sync')}>↺</button>
+        <button className="icon-btn" onClick={() => setLogsOpen(true)} title="System logs">📋</button>
         <button className="icon-btn" onClick={() => window.clauboy.openSettings().catch(console.error)} title={t('settings')}>⚙</button>
       </div>
 

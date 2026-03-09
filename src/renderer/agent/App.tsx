@@ -1,68 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react'
-import type { AppState, Button, Config, IssueState, LogEntry } from '../../shared/types'
+import type { AppState, Button, Config, IssueState } from '../../shared/types'
 import { useI18n } from '../shared/useI18n'
-
-const LOG_COLORS: Record<string, string> = {
-  info: 'var(--text-secondary)',
-  debug: 'var(--text-muted)',
-  warn: '#e3b341',
-  error: '#f85149'
-}
-
-function LogPanel(): React.ReactElement {
-  const [logs, setLogs] = useState<LogEntry[]>([])
-  const [open, setOpen] = useState(true)
-  const logRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const unsub = window.clauboy.onLogData((entry: LogEntry) => {
-      setLogs((prev) => [...prev.slice(-499), entry])
-    })
-    return unsub
-  }, [])
-
-  useEffect(() => {
-    if (open && logRef.current) {
-      logRef.current.scrollTop = logRef.current.scrollHeight
-    }
-  }, [logs, open])
-
-  return (
-    <div style={{ borderTop: '1px solid var(--border)', flexShrink: 0, background: 'var(--bg-tertiary)' }}>
-      <div
-        onClick={() => setOpen(!open)}
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '3px 8px', cursor: 'pointer', userSelect: 'none',
-          fontSize: '11px', color: 'var(--text-muted)'
-        }}
-      >
-        <span>System Logs ({logs.length})</span>
-        <span>{open ? '▼' : '▶'}</span>
-      </div>
-      {open && (
-        <div
-          ref={logRef}
-          style={{
-            height: '140px', overflowY: 'auto', padding: '4px 8px',
-            fontFamily: 'monospace', fontSize: '11px', lineHeight: '1.5'
-          }}
-        >
-          {logs.length === 0 && (
-            <span style={{ color: 'var(--text-muted)' }}>Waiting for logs…</span>
-          )}
-          {logs.map((entry, i) => (
-            <div key={i} style={{ color: LOG_COLORS[entry.level] ?? 'inherit', wordBreak: 'break-all' }}>
-              <span style={{ opacity: 0.6 }}>{entry.ts.slice(11, 19)} </span>
-              <span style={{ fontWeight: entry.level === 'error' ? 700 : 400 }}>[{entry.level.toUpperCase()}] </span>
-              {entry.msg}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
 
 const LOADING_STEPS = [
   'Connecting to GitHub...',
@@ -416,7 +354,6 @@ export default function AgentApp(): React.ReactElement {
           <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Status: {issueState.containerStatus}</span>
         </div>
       )}
-      <LogPanel />
     </div>
   )
 }
