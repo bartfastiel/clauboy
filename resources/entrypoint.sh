@@ -38,12 +38,15 @@ else
     tmux new-session -d -s "$SESSION" -x 220 -y 50
     sleep 0.3
     tmux send-keys -t "$SESSION" "cd /workspace && claude --dangerously-skip-permissions" Enter
-    # Auto-accept the bypass-permissions warning:
-    # Wait for the warning to fully render, move to "Yes, I accept" and confirm
-    sleep 5
-    tmux send-keys -t "$SESSION" Down
-    sleep 1
-    tmux send-keys -t "$SESSION" Enter
+    # Auto-accept the bypass-permissions warning by polling until the prompt appears
+    for i in $(seq 1 30); do
+        sleep 1
+        PANE=$(tmux capture-pane -t "$SESSION" -p 2>/dev/null || true)
+        if echo "$PANE" | grep -q "Yes, I accept"; then
+            tmux send-keys -t "$SESSION" Down Enter
+            break
+        fi
+    done
 fi
 
 echo "[clauboy] Starting ttyd on port 7681..."
