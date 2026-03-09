@@ -214,7 +214,16 @@ export default function DashboardApp(): React.ReactElement {
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           placeholder="Filter issues…"
-          style={{ flex: 1, fontSize: '12px', padding: '3px 8px' }}
+          style={{
+            flex: 1, fontSize: '12px', padding: '3px 8px',
+            ...(filter.trim() ? {
+              background: 'var(--accent)',
+              color: '#fff',
+              fontWeight: 700,
+              outline: '2px solid var(--accent)',
+              borderColor: 'var(--accent)'
+            } : {})
+          }}
         />
         {appState.isSyncing && <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>⟳</span>}
         <button
