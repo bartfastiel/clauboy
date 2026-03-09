@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import logoUrl from '../../../resources/logo.png'
 import { AppState, IssueState, ClauboyLabel, GitHubIssue } from '../../shared/types'
 import { VERSION } from '../../shared/version'
 import { useI18n } from '../shared/useI18n'
@@ -238,14 +239,14 @@ export default function DashboardApp(): React.ReactElement {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Toolbar */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '8px 12px', borderBottom: '1px solid var(--border)', gap: '8px', background: 'var(--bg-secondary)' }}>
-        <span style={{ fontWeight: 700, fontSize: '15px' }}>🤠</span>
+        <img src={logoUrl} alt="Clauboy" style={{ width: '20px', height: '20px', flexShrink: 0 }} />
         <input
           type="text"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           placeholder="Filter issues…"
           style={{
-            flex: 1, fontSize: '12px', padding: '3px 8px',
+            flex: 1, minWidth: 0, fontSize: '12px', padding: '3px 8px',
             ...(filter.trim() ? {
               background: 'var(--accent)',
               color: '#fff',
@@ -258,7 +259,7 @@ export default function DashboardApp(): React.ReactElement {
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-          style={{ fontSize: '11px', padding: '2px 4px' }}
+          style={{ fontSize: '11px', padding: '2px 4px', flexShrink: 0 }}
           title="Sort order"
         >
           <option value="updated">↕ Last updated</option>
