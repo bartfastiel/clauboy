@@ -13,8 +13,39 @@ import { ClauboyLabel, IssueState } from '../shared/types'
 import { logger } from './logger'
 
 let pollingInterval: ReturnType<typeof setInterval> | null = null
+let activityInterval: ReturnType<typeof setInterval> | null = null
 let isPolling = false
 let rateLimitBackoffUntil = 0
+
+async function refreshAgentActivity(): Promise<void> {
+  const issues = appState.getState().issues.filter((i) => i.containerStatus === 'running')
+  for (const issueState of issues) {
+    try {
+      const pane = await captureAgentPane(issueState.issue.number)
+      // eslint-disable-next-line no-control-regex
+      const stripped = pane.replace(/\x1b\[[0-9;]*[mGKHF]/g, '')
+      const activity = stripped.includes('esc to interrupt') ? 'working' : 'waiting'
+      if (activity !== issueState.agentActivity) {
+        appState.updateIssue(issueState.issue.number, { agentActivity: activity })
+      }
+    } catch {
+      // ignore — container might not be ready
+    }
+  }
+}
+
+export function startActivityPolling(intervalMs: number = 3000): void {
+  if (activityInterval) return
+  activityInterval = setInterval(() => { void refreshAgentActivity() }, intervalMs)
+  void refreshAgentActivity()
+}
+
+export function stopActivityPolling(): void {
+  if (activityInterval) {
+    clearInterval(activityInterval)
+    activityInterval = null
+  }
+}
 
 export function startPolling(intervalMs: number = 30000): void {
   if (pollingInterval) return
@@ -172,19 +203,6 @@ async function runPollTick(): Promise<void> {
         }
       }
 
-      // Detect agent activity state via tmux pane capture
-      if (issueState.containerStatus === 'running') {
-        try {
-          const pane = await captureAgentPane(issue.number)
-          const trimmed = pane.trimEnd()
-          // Claude's idle prompt ends with "❯ " on its own line
-          issueState.agentActivity = trimmed.endsWith('❯') || trimmed.endsWith('❯ ') ? 'waiting' : 'working'
-        } catch {
-          issueState.agentActivity = null
-        }
-      } else {
-        issueState.agentActivity = null
-      }
 
       // Check for new comments when container is running
       if (issueState.containerStatus === 'running') {

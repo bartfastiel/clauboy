@@ -107,6 +107,9 @@ export function registerIpcHandlers(): void {
 
     // Step 7: Close agent window
     closeAgentWindow(issueNumber)
+
+    // Step 8: Refetch issues from GitHub so the list is up to date
+    void forceSync()
   })
 
   // Docker
