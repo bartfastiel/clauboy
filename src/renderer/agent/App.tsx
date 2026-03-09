@@ -174,6 +174,7 @@ export default function AgentApp(): React.ReactElement {
   const [issueState, setIssueState] = useState<IssueState | null>(null)
   const [config, setConfig] = useState<Config | null>(null)
   const [customPrompt, setCustomPrompt] = useState('')
+  const [terminalReady, setTerminalReady] = useState(false)
   const customPromptRef = useRef<HTMLInputElement>(null)
   const { t } = useI18n()
 
@@ -239,8 +240,15 @@ export default function AgentApp(): React.ReactElement {
     setCustomPrompt('')
   }, [customPrompt, issueNumber])
 
+  const prevRunning = React.useRef(false)
   const isLoading = issueState?.loadingStep !== null && issueState?.loadingStep !== undefined
   const isRunning = issueState?.containerStatus === 'running'
+
+  // Reset terminal loading overlay when container transitions to running
+  React.useEffect(() => {
+    if (isRunning && !prevRunning.current) setTerminalReady(false)
+    prevRunning.current = isRunning
+  }, [isRunning])
   const isPaused = issueState?.clauboyLabels?.includes('clauboy:paused') ?? false
   const agentIsRunning = issueState?.agentIsRunning ?? false
 
@@ -351,10 +359,23 @@ export default function AgentApp(): React.ReactElement {
         </div>
       ) : isRunning ? (
         <>
-          <webview
-            src={`http://localhost:${issueState.terminalPort ?? (37680 + issueNumber)}`}
-            style={{ flex: 1, width: '100%', minHeight: 0 }}
-          />
+          <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
+            {!terminalReady && (
+              <div style={{
+                position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center', gap: '12px',
+                background: 'var(--bg)', zIndex: 1
+              }}>
+                <span style={{ fontSize: '28px', animation: 'spin 1s linear infinite' }}>⟳</span>
+                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Connecting to terminal…</span>
+              </div>
+            )}
+            <webview
+              src={`http://localhost:${issueState.terminalPort ?? (37680 + issueNumber)}`}
+              style={{ width: '100%', height: '100%' }}
+              onDomReady={() => setTerminalReady(true)}
+            />
+          </div>
           <div style={{
             display: 'flex',
             gap: '6px',
@@ -370,13 +391,15 @@ export default function AgentApp(): React.ReactElement {
               onChange={(e) => setCustomPrompt(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') sendCustomPrompt() }}
               placeholder="Inject prompt… (Enter to send)"
-              style={{ flex: 1, fontSize: '12px', padding: '4px 8px' }}
+              disabled={agentIsRunning}
+              style={{ flex: 1, fontSize: '12px', padding: '4px 8px', opacity: agentIsRunning ? 0.5 : 1 }}
             />
             <button
               onClick={sendCustomPrompt}
+              disabled={agentIsRunning || !customPrompt.trim()}
               style={{ fontSize: '12px', padding: '4px 12px', flexShrink: 0 }}
             >
-              Send
+              {agentIsRunning ? '⟳' : 'Send'}
             </button>
           </div>
         </>
