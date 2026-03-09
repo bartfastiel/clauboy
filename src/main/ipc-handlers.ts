@@ -18,7 +18,6 @@ import {
   pullImage,
   checkDocker,
   stopContainer,
-  startContainer,
   getDockerfilePath,
   openAuthTerminal,
   getTerminalPort
@@ -97,7 +96,7 @@ export function registerIpcHandlers(): void {
     )
 
     // Step 4: Remove ALL clauboy labels so issue disappears from the list
-    await setLabel(issueNumber, [], ['clauboy', 'clauboy:running', 'clauboy:done', 'clauboy:paused', 'clauboy:error'])
+    await setLabel(issueNumber, [], ['clauboy', 'clauboy:running', 'clauboy:done', 'clauboy:error'])
 
     // Step 5: Post bot comment
     await postComment(issueNumber, '🤠 Agent done.')
@@ -283,32 +282,4 @@ export function registerIpcHandlers(): void {
     return true
   })
 
-  // Pause: stop container + set clauboy:paused label
-  ipcMain.handle(IPC.AGENT_PAUSE, async (_event, issueNumber: number) => {
-    const issueState = appState.getState().issues.find((i) => i.issue.number === issueNumber)
-    if (issueState?.containerId) {
-      await stopContainer(issueState.containerId)
-    }
-    await setLabel(issueNumber, ['clauboy:paused'], ['clauboy:running', 'clauboy:error'])
-    appState.updateIssue(issueNumber, { containerStatus: 'stopped', clauboyLabels: ['clauboy:paused'] })
-    return true
-  })
-
-  // Resume: start container again + remove clauboy:paused label
-  ipcMain.handle(IPC.AGENT_RESUME, async (_event, issueNumber: number) => {
-    const config = loadConfig()
-    const issueState = appState.getState().issues.find((i) => i.issue.number === issueNumber)
-    if (!issueState?.worktreePath) throw new Error('No worktree path found for issue')
-
-    appState.updateIssue(issueNumber, { containerStatus: 'starting', loadingStep: 'Starting container...' })
-    const containerId = await startContainer(issueNumber, config, issueState.worktreePath, issueState.issue.title)
-    await setLabel(issueNumber, ['clauboy:running'], ['clauboy:paused', 'clauboy:error'])
-    appState.updateIssue(issueNumber, {
-      containerId,
-      containerStatus: 'running',
-      loadingStep: null,
-      clauboyLabels: ['clauboy:running']
-    })
-    return true
-  })
 }

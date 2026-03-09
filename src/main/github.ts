@@ -39,7 +39,7 @@ function getConfig(): Config {
 }
 
 const CLAUBOY_LABEL_NAMES = new Set<string>([
-  'clauboy', 'clauboy:running', 'clauboy:done', 'clauboy:paused', 'clauboy:error'
+  'clauboy', 'clauboy:running', 'clauboy:done', 'clauboy:error'
 ])
 
 function mapIssue(issue: {

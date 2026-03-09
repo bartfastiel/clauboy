@@ -30,7 +30,7 @@ async function startupSync(): Promise<void> {
       const clauboyLabels = issue.labels
         .map((l) => l.name)
         .filter((name) =>
-          ['clauboy', 'clauboy:running', 'clauboy:done', 'clauboy:paused', 'clauboy:error'].includes(
+          ['clauboy', 'clauboy:running', 'clauboy:done', 'clauboy:error'].includes(
             name
           )
         ) as IssueState['clauboyLabels']

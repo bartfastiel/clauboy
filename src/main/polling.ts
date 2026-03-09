@@ -145,7 +145,7 @@ async function runPollTick(): Promise<void> {
       const clauboyLabels = issue.labels
         .map((l) => l.name)
         .filter((name): name is ClauboyLabel =>
-          ['clauboy', 'clauboy:running', 'clauboy:done', 'clauboy:paused', 'clauboy:error'].includes(name)
+          ['clauboy', 'clauboy:running', 'clauboy:done', 'clauboy:error'].includes(name)
         )
 
       logger.debug(`Issue #${issue.number} "${issue.title}" — labels=[${clauboyLabels.join(',')}] existingStatus=${existing?.containerStatus ?? 'N/A'}`)

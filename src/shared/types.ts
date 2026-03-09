@@ -9,7 +9,7 @@ export interface LogEntry {
 }
 
 
-export type ButtonType = 'prompt' | 'ide' | 'web' | 'teardown' | 'pause' | 'resume'
+export type ButtonType = 'prompt' | 'ide' | 'web' | 'teardown'
 
 export interface Button {
   id: string
@@ -50,14 +50,12 @@ export type ClauboyLabel =
   | 'clauboy'
   | 'clauboy:running'
   | 'clauboy:done'
-  | 'clauboy:paused'
   | 'clauboy:error'
 
 export const LABEL_COLORS: Record<ClauboyLabel, string> = {
   clauboy: '0075ca',
   'clauboy:running': '2ea44f',
   'clauboy:done': '8957e5',
-  'clauboy:paused': 'e3b341',
   'clauboy:error': 'd73a49'
 }
 
@@ -155,8 +153,6 @@ export const IPC = {
   AGENT_AUTH_TERMINAL: 'agent:auth-terminal',
   AGENT_TERMINAL_URL: 'agent:terminal-url',
   AGENT_CLEANUP_ORPHAN: 'agent:cleanup-orphan',
-  AGENT_PAUSE: 'agent:pause',
-  AGENT_RESUME: 'agent:resume',
   LOG_DATA: 'log:data'
 } as const
 
