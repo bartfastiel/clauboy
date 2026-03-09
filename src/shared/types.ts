@@ -75,6 +75,8 @@ export interface IssueState {
   errorMessage?: string | null
   agentIsRunning?: boolean
   agentActivity: 'waiting' | 'working' | null
+  agentElapsedSeconds: number | null
+  agentElapsedCapturedAt: string | null
 }
 
 export interface AppState {

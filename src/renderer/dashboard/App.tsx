@@ -12,7 +12,27 @@ function getLabelBadge(labels: ClauboyLabel[]): { text: string; className: strin
   return { text: 'Unknown', className: 'badge' }
 }
 
+function formatElapsed(seconds: number): string {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = seconds % 60
+  if (h > 0) return `${h}h ${m}m ${s}s`
+  if (m > 0) return `${m}m ${s}s`
+  return `${s}s`
+}
+
 function IssueRow({ issueState, onClick }: { issueState: IssueState; onClick: () => void }): React.ReactElement {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (issueState.containerStatus !== 'running') return
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [issueState.containerStatus])
+
+  const elapsed = issueState.agentElapsedSeconds !== null && issueState.agentElapsedCapturedAt
+    ? issueState.agentElapsedSeconds + Math.floor((now - new Date(issueState.agentElapsedCapturedAt).getTime()) / 1000)
+    : null
+
   const badge = getLabelBadge(issueState.clauboyLabels)
   const containerIcon = issueState.containerStatus === 'running'
     ? (issueState.agentActivity === 'waiting' ? '🟡' : issueState.agentActivity === 'working' ? '🟢' : '🟢')
@@ -54,6 +74,7 @@ function IssueRow({ issueState, onClick }: { issueState: IssueState; onClick: ()
         {!issueState.loadingStep && issueState.containerStatus === 'running' && issueState.agentActivity && (
           <div style={{ fontSize: '11px', color: issueState.agentActivity === 'waiting' ? 'var(--text-muted)' : 'var(--accent)' }}>
             {issueState.agentActivity === 'waiting' ? '⏸ Waiting for input' : '⚙ Working…'}
+            {elapsed !== null && <span style={{ marginLeft: '6px', opacity: 0.7 }}>{formatElapsed(elapsed)}</span>}
           </div>
         )}
       </div>

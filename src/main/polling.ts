@@ -17,6 +17,13 @@ let activityInterval: ReturnType<typeof setInterval> | null = null
 let isPolling = false
 let rateLimitBackoffUntil = 0
 
+function parseElapsedSeconds(text: string): number | null {
+  // Matches patterns like "(14m 28s", "(5s", "(1h 3m 12s"
+  const m = text.match(/\((?:(\d+)h\s+)?(?:(\d+)m\s+)?(\d+)s/)
+  if (!m) return null
+  return (parseInt(m[1] ?? '0') * 3600) + (parseInt(m[2] ?? '0') * 60) + parseInt(m[3])
+}
+
 async function refreshAgentActivity(): Promise<void> {
   const issues = appState.getState().issues.filter((i) => i.containerStatus === 'running')
   for (const issueState of issues) {
@@ -25,8 +32,15 @@ async function refreshAgentActivity(): Promise<void> {
       // eslint-disable-next-line no-control-regex
       const stripped = pane.replace(/\x1b\[[0-9;]*[mGKHF]/g, '')
       const activity = stripped.includes('esc to interrupt') ? 'working' : 'waiting'
-      if (activity !== issueState.agentActivity) {
-        appState.updateIssue(issueState.issue.number, { agentActivity: activity })
+      const elapsedSeconds = parseElapsedSeconds(stripped)
+      const update: Partial<typeof issueState> = {}
+      if (activity !== issueState.agentActivity) update.agentActivity = activity
+      if (elapsedSeconds !== null) {
+        update.agentElapsedSeconds = elapsedSeconds
+        update.agentElapsedCapturedAt = new Date().toISOString()
+      }
+      if (Object.keys(update).length > 0) {
+        appState.updateIssue(issueState.issue.number, update)
       }
     } catch {
       // ignore — container might not be ready
@@ -116,7 +130,9 @@ async function runPollTick(): Promise<void> {
         clauboyLabels,
         lastKnownCommentId: null,
         loadingStep: null,
-        agentActivity: null
+        agentActivity: null,
+        agentElapsedSeconds: null,
+        agentElapsedCapturedAt: null
       }
 
       // Update issue data

@@ -50,7 +50,9 @@ async function startupSync(): Promise<void> {
         clauboyLabels,
         lastKnownCommentId: null,
         loadingStep: null,
-        agentActivity: null
+        agentActivity: null,
+        agentElapsedSeconds: null,
+        agentElapsedCapturedAt: null
       }
     })
 
