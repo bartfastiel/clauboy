@@ -12,10 +12,10 @@ const DUMMY_ISSUE = {
 function expandPreview(template: string): string {
   return template
     .replace(/\{\{ISSUE_NUMBER\}\}/g, String(DUMMY_ISSUE.number))
-    .replace(/\{\{ISSUE_TITLE\}\}/g, DUMMY_ISSUE.title)
     .replace(/\{\{ISSUE_URL\}\}/g, DUMMY_ISSUE.html_url)
-    .replace(/\{\{ISSUE_BODY\}\}/g, DUMMY_ISSUE.body)
     .replace(/\{\{WORKTREE_PATH\}\}/g, DUMMY_ISSUE.worktreePath)
+    .replace(/\{\{ISSUE_TITLE\}\}/g, '')
+    .replace(/\{\{ISSUE_BODY\}\}/g, '')
 }
 
 export default function ButtonEditorApp(): React.ReactElement {
@@ -164,7 +164,7 @@ export default function ButtonEditorApp(): React.ReactElement {
                     value={selectedButton.prompt ?? ''}
                     onChange={(e) => updateSelected({ prompt: e.target.value })}
                     style={{ minHeight: '120px', fontFamily: 'monospace', fontSize: '12px' }}
-                    placeholder="Use {{ISSUE_NUMBER}}, {{ISSUE_TITLE}}, {{ISSUE_URL}}, {{ISSUE_BODY}}, {{WORKTREE_PATH}}"
+                    placeholder="Use {{ISSUE_NUMBER}}, {{ISSUE_URL}}, {{WORKTREE_PATH}}"
                   />
                   {selectedButton.prompt && (
                     <div style={{ marginTop: '8px' }}>

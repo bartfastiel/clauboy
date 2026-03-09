@@ -120,7 +120,7 @@ Each agent window has a configurable toolbar. Button types:
 | `web` | Opens a URL in the browser |
 | `teardown` | Stops the agent and cleans up |
 
-Prompt templates support variables: `{{ISSUE_NUMBER}}`, `{{ISSUE_TITLE}}`, `{{ISSUE_URL}}`, `{{ISSUE_BODY}}`, `{{WORKTREE_PATH}}`.
+Prompt templates support variables: `{{ISSUE_NUMBER}}`, `{{ISSUE_URL}}`, `{{WORKTREE_PATH}}`. Note: `{{ISSUE_TITLE}}` and `{{ISSUE_BODY}}` are intentionally not supported — injecting untrusted issue content directly into the Claude session is a prompt-injection risk. The agent reads the issue via `gh issue view` instead.
 
 Default buttons: **Start**, **Conceive**, **Document**, **PRs**, **IDE**, **Issue**, **Teardown**.
 

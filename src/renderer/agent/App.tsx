@@ -77,10 +77,12 @@ function expandTemplateVars(
 ): string {
   return template
     .replace(/\{\{ISSUE_NUMBER\}\}/g, String(issueState.issue.number))
-    .replace(/\{\{ISSUE_TITLE\}\}/g, issueState.issue.title)
     .replace(/\{\{ISSUE_URL\}\}/g, issueState.issue.html_url)
-    .replace(/\{\{ISSUE_BODY\}\}/g, issueState.issue.body ?? '')
     .replace(/\{\{WORKTREE_PATH\}\}/g, issueState.worktreePath ?? '')
+    // {{ISSUE_TITLE}} and {{ISSUE_BODY}} are intentionally NOT expanded here —
+    // injecting untrusted issue content into the Claude session is a prompt-injection risk.
+    .replace(/\{\{ISSUE_TITLE\}\}/g, '')
+    .replace(/\{\{ISSUE_BODY\}\}/g, '')
 }
 
 function ButtonBar({
