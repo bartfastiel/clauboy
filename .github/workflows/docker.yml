@@ -26,6 +26,9 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Inject git commit hash into version.ts
+        run: echo "export const VERSION = '$(git rev-parse --short HEAD)'" > src/shared/version.ts
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:

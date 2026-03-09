@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { AppState, IssueState, ClauboyLabel, GitHubIssue } from '../../shared/types'
+import { VERSION } from '../../shared/version'
 import { useI18n } from '../shared/useI18n'
 
 function getLabelBadge(labels: ClauboyLabel[]): { text: string; className: string } {
@@ -254,6 +255,7 @@ export default function DashboardApp(): React.ReactElement {
         {appState.lastSyncAt && (
           <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{t('last_sync')}: {new Date(appState.lastSyncAt).toLocaleTimeString()}</span>
         )}
+        <span style={{ fontSize: '11px', color: 'var(--text-muted)', opacity: 0.6 }}>{VERSION}</span>
       </div>
     </div>
   )
