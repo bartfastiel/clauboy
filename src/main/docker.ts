@@ -80,18 +80,18 @@ export async function startContainer(
     logger.debug(`Docker: no existing container "${containerName}" to remove`)
   }
 
-  // Prefer a short-lived GitHub App installation token so the agent posts as
-  // the app bot account rather than the owner's personal account.
+  // Use a GitHub App installation token for gh CLI (so comments/PRs appear as the bot),
+  // but always pass the PAT as GITHUB_PAT for git operations (app may lack repo access).
   const installationToken = await getInstallationToken()
-  const agentGhToken = installationToken ?? config.github.token
   if (installationToken) {
-    logger.info(`Docker: using GitHub App installation token for issue #${issueNumber}`)
+    logger.info(`Docker: using GitHub App installation token for gh CLI on issue #${issueNumber}`)
   }
 
   const env: string[] = []
   env.push(`ISSUE_NUMBER=${issueNumber}`)
   env.push(`ISSUE_TITLE=${issueTitle}`)
-  env.push(`GH_TOKEN=${agentGhToken}`)
+  env.push(`GH_TOKEN=${installationToken ?? config.github.token}`)
+  env.push(`GITHUB_PAT=${config.github.token}`)
   env.push(`GITHUB_OWNER=${config.github.owner}`)
   env.push(`GITHUB_REPO=${config.github.repo}`)
 

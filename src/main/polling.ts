@@ -7,7 +7,7 @@ import {
 import { appState } from './state'
 import * as path from 'path'
 import * as fs from 'fs'
-import { startContainer, TERMINAL_PORT_BASE } from './docker'
+import { startContainer, listRunningContainers, TERMINAL_PORT_BASE } from './docker'
 import { loadConfig } from './config'
 import { ClauboyLabel, IssueState } from '../shared/types'
 import { logger } from './logger'
@@ -51,6 +51,12 @@ async function runPollTick(): Promise<void> {
     const config = loadConfig()
     logger.debug(`Poll tick — trustedUser=${config.github.trustedUser} repo=${config.github.owner}/${config.github.repo}`)
 
+    // Reconcile actual Docker state before processing issues
+    const runningContainers = await listRunningContainers().catch(() => [])
+    const runningIssueNumbers = new Set(
+      runningContainers.filter((c) => c.status === 'running').map((c) => c.issueNumber)
+    )
+
     const issues = await fetchClauboyIssues()
     logger.info(`Fetched ${issues.length} clauboy issue(s): ${issues.map((i) => `#${i.number}`).join(', ') || 'none'}`)
 
@@ -84,6 +90,17 @@ async function runPollTick(): Promise<void> {
       // Update issue data
       issueState.issue = issue
       issueState.clauboyLabels = clauboyLabels
+
+      // Reconcile container status against actual Docker state
+      if (issueState.containerStatus === 'running' && !runningIssueNumbers.has(issue.number)) {
+        logger.warn(`Issue #${issue.number}: container was 'running' in state but is not running in Docker — marking stopped`)
+        issueState.containerStatus = 'stopped'
+        issueState.containerId = null
+      } else if (issueState.containerStatus !== 'running' && runningIssueNumbers.has(issue.number)) {
+        logger.info(`Issue #${issue.number}: container is running in Docker but state was '${issueState.containerStatus}' — correcting`)
+        issueState.containerStatus = 'running'
+        issueState.terminalPort = TERMINAL_PORT_BASE + issue.number
+      }
 
       // Check if we should start a container (trusted user added clauboy label)
       const shouldConsiderStart =
