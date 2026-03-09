@@ -223,6 +223,12 @@ export default function AgentApp(): React.ReactElement {
           onAction={handleButtonAction}
           disabled={agentIsRunning}
         />
+        <button
+          className="icon-btn"
+          onClick={() => window.clauboy.openButtonEditor().catch(console.error)}
+          title="Edit action buttons"
+          style={{ fontSize: '15px', padding: '3px 6px', flexShrink: 0 }}
+        >⋮</button>
         {isRunning && (
           <button
             onClick={() => window.clauboy.pauseAgent(issueNumber).catch(console.error)}
