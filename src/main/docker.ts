@@ -100,6 +100,15 @@ export async function startContainer(
     fs.writeFileSync(settingsFile, JSON.stringify({ theme: 'dark' }))
   }
 
+  // Sync OAuth credentials from host ~/.claude/.credentials.json so containers
+  // can use subscription auth instead of a (potentially depleted) API key
+  const hostCredentials = path.join(os.homedir(), '.claude', '.credentials.json')
+  const authCredentials = path.join(claudeAuthDir, '.credentials.json')
+  if (fs.existsSync(hostCredentials)) {
+    fs.copyFileSync(hostCredentials, authCredentials)
+    logger.info('Docker: synced OAuth credentials from host ~/.claude to container auth dir')
+  }
+
   const hostConfig: Dockerode.HostConfig = {
     NetworkMode: config.docker.networkName,
     Binds: [
@@ -178,7 +187,10 @@ export async function runAgentPrompt(
     ],
     AttachStdout: true,
     AttachStderr: true,
-    User: 'agent'
+    User: 'agent',
+    // Unset ANTHROPIC_API_KEY so OAuth credentials in ~/.claude/.credentials.json
+    // are used instead of a potentially empty/invalid API key
+    Env: ['ANTHROPIC_API_KEY=']
   })
 
   await new Promise<void>((resolve, reject) => {
