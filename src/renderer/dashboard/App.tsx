@@ -145,6 +145,7 @@ export default function DashboardApp(): React.ReactElement {
   const [allLoading, setAllLoading] = useState(false)
   const [startingIssue, setStartingIssue] = useState<number | null>(null)
   const [filter, setFilter] = useState('')
+  const [sortBy, setSortBy] = useState<'updated' | 'number' | 'status' | 'activity'>('updated')
   const { t } = useI18n()
 
   useEffect(() => {
@@ -211,8 +212,25 @@ export default function DashboardApp(): React.ReactElement {
   }
 
   const clauboyIssueNumbers = new Set(appState.issues.map((i) => i.issue.number))
+  const statusOrder = (s: IssueState): number => {
+    if (s.containerStatus === 'running') return 0
+    if (s.clauboyLabels.includes('clauboy:paused')) return 1
+    if (s.clauboyLabels.includes('clauboy:error')) return 2
+    if (s.clauboyLabels.includes('clauboy')) return 3
+    return 4
+  }
+  const activityOrder = (s: IssueState): number => {
+    if (s.agentActivity === 'waiting') return 0
+    if (s.agentActivity === 'working') return 1
+    return 2
+  }
   const sortedIssues = [...appState.issues]
-    .sort((a, b) => new Date(b.issue.updated_at).getTime() - new Date(a.issue.updated_at).getTime())
+    .sort((a, b) => {
+      if (sortBy === 'number') return a.issue.number - b.issue.number
+      if (sortBy === 'status') return statusOrder(a) - statusOrder(b)
+      if (sortBy === 'activity') return activityOrder(a) - activityOrder(b)
+      return new Date(b.issue.updated_at).getTime() - new Date(a.issue.updated_at).getTime()
+    })
     .filter((s) => matchesFilter(s.issue.title, s.issue.number, filter))
   const filteredAllIssues = allIssues?.filter((i) => matchesFilter(i.title, i.number, filter)) ?? null
 
@@ -237,6 +255,17 @@ export default function DashboardApp(): React.ReactElement {
             } : {})
           }}
         />
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+          style={{ fontSize: '11px', padding: '2px 4px' }}
+          title="Sort order"
+        >
+          <option value="updated">↕ Last updated</option>
+          <option value="number">↕ Issue #</option>
+          <option value="status">↕ Status</option>
+          <option value="activity">↕ Activity</option>
+        </select>
         {appState.isSyncing && <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>⟳</span>}
         <button
           className="icon-btn"
