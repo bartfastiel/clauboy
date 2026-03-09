@@ -203,6 +203,14 @@ export default function AgentApp(): React.ReactElement {
         }).catch(console.error)
         break
 
+      case 'pause':
+        window.clauboy.pauseAgent(issueNumber).catch(console.error)
+        break
+
+      case 'resume':
+        window.clauboy.resumeAgent(issueNumber).catch(console.error)
+        break
+
       case 'prompt':
         if (btn.prompt) {
           const expanded = expandTemplateVars(btn.prompt, issueState)
@@ -233,6 +241,7 @@ export default function AgentApp(): React.ReactElement {
 
   const isLoading = issueState?.loadingStep !== null && issueState?.loadingStep !== undefined
   const isRunning = issueState?.containerStatus === 'running'
+  const isPaused = issueState?.clauboyLabels?.includes('clauboy:paused') ?? false
   const agentIsRunning = issueState?.agentIsRunning ?? false
 
   if (!issueState || !config) {
@@ -266,6 +275,24 @@ export default function AgentApp(): React.ReactElement {
           onAction={handleButtonAction}
           disabled={agentIsRunning}
         />
+        {isRunning && (
+          <button
+            onClick={() => window.clauboy.pauseAgent(issueNumber).catch(console.error)}
+            title="Pause agent (stop container, keep worktree)"
+            style={{ fontSize: '11px', padding: '3px 8px', flexShrink: 0 }}
+          >
+            ⏸
+          </button>
+        )}
+        {isPaused && (
+          <button
+            onClick={() => window.clauboy.resumeAgent(issueNumber).catch(console.error)}
+            title="Resume agent"
+            style={{ fontSize: '11px', padding: '3px 8px', flexShrink: 0 }}
+          >
+            ▶ Resume
+          </button>
+        )}
         {isRunning && (
           <button
             onClick={() => window.clauboy.openAuthTerminal(issueNumber).catch(console.error)}

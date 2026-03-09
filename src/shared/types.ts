@@ -9,7 +9,7 @@ export interface LogEntry {
 }
 
 
-export type ButtonType = 'prompt' | 'ide' | 'web' | 'teardown'
+export type ButtonType = 'prompt' | 'ide' | 'web' | 'teardown' | 'pause' | 'resume'
 
 export interface Button {
   id: string
