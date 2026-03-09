@@ -107,10 +107,13 @@ export function createAgentWindow(issueNumber: number, title?: string): BrowserW
     title: title ? `#${issueNumber} – ${title}` : `#${issueNumber}`
   })
 
+  const winTitle = title ? `#${issueNumber} – ${title}` : `#${issueNumber}`
+
   loadWindow(win, 'agent', { issue: String(issueNumber) })
 
-  // Prevent the renderer's <title> from overwriting the meaningful window title
+  // Prevent the renderer's <title> from overwriting our title, and restore it after load
   win.on('page-title-updated', (e) => e.preventDefault())
+  win.webContents.on('did-finish-load', () => win.setTitle(winTitle))
 
   win.on('closed', () => {
     agentWindows.delete(issueNumber)
