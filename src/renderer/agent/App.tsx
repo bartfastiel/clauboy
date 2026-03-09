@@ -26,11 +26,13 @@ function expandTemplateVars(
 function ButtonBar({
   buttons,
   onAction,
-  disabled
+  disabled,
+  onEdit
 }: {
   buttons: Button[]
   onAction: (btn: Button) => void
   disabled?: boolean
+  onEdit?: () => void
 }): React.ReactElement {
   const [overflowOpen, setOverflowOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -65,6 +67,14 @@ function ButtonBar({
           <span>{btn.label}</span>
         </button>
       ))}
+      {onEdit && (
+        <button
+          className="icon-btn"
+          onClick={onEdit}
+          title="Edit action buttons"
+          style={{ fontSize: '15px', padding: '3px 6px', flexShrink: 0 }}
+        >⋮</button>
+      )}
       {overflowButtons.length > 0 && (
         <div style={{ position: 'relative' }}>
           <button
@@ -222,13 +232,8 @@ export default function AgentApp(): React.ReactElement {
           buttons={config.buttons}
           onAction={handleButtonAction}
           disabled={agentIsRunning}
+          onEdit={() => window.clauboy.openButtonEditor().catch(console.error)}
         />
-        <button
-          className="icon-btn"
-          onClick={() => window.clauboy.openButtonEditor().catch(console.error)}
-          title="Edit action buttons"
-          style={{ fontSize: '15px', padding: '3px 6px', flexShrink: 0 }}
-        >⋮</button>
         {isRunning && (
           <button
             onClick={() => window.clauboy.pauseAgent(issueNumber).catch(console.error)}
