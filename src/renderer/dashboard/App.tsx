@@ -100,12 +100,19 @@ function AllIssueRow({
   )
 }
 
+function matchesFilter(title: string, number: number, filter: string): boolean {
+  const q = filter.trim().toLowerCase()
+  if (!q) return true
+  return title.toLowerCase().includes(q) || String(number).includes(q)
+}
+
 export default function DashboardApp(): React.ReactElement {
   const [appState, setAppState] = useState<AppState | null>(null)
   const [browseOpen, setBrowseOpen] = useState(false)
   const [allIssues, setAllIssues] = useState<GitHubIssue[] | null>(null)
   const [allLoading, setAllLoading] = useState(false)
   const [startingIssue, setStartingIssue] = useState<number | null>(null)
+  const [filter, setFilter] = useState('')
   const { t } = useI18n()
 
   useEffect(() => {
@@ -160,16 +167,24 @@ export default function DashboardApp(): React.ReactElement {
   }
 
   const clauboyIssueNumbers = new Set(appState.issues.map((i) => i.issue.number))
-  const sortedIssues = [...appState.issues].sort(
-    (a, b) => new Date(b.issue.updated_at).getTime() - new Date(a.issue.updated_at).getTime()
-  )
+  const sortedIssues = [...appState.issues]
+    .sort((a, b) => new Date(b.issue.updated_at).getTime() - new Date(a.issue.updated_at).getTime())
+    .filter((s) => matchesFilter(s.issue.title, s.issue.number, filter))
+  const filteredAllIssues = allIssues?.filter((i) => matchesFilter(i.title, i.number, filter)) ?? null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Toolbar */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '8px 12px', borderBottom: '1px solid var(--border)', gap: '8px', background: 'var(--bg-secondary)' }}>
-        <span style={{ fontWeight: 700, fontSize: '15px', flex: 1 }}>🤠 Clauboy</span>
-        {appState.isSyncing && <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Syncing...</span>}
+        <span style={{ fontWeight: 700, fontSize: '15px' }}>🤠</span>
+        <input
+          type="text"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="Filter issues…"
+          style={{ flex: 1, fontSize: '12px', padding: '3px 8px' }}
+        />
+        {appState.isSyncing && <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>⟳</span>}
         <button
           className="icon-btn"
           style={{ fontWeight: browseOpen ? 700 : 400 }}
@@ -216,13 +231,13 @@ export default function DashboardApp(): React.ReactElement {
 
             {allLoading && <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px' }}>Loading…</div>}
 
-            {!allLoading && allIssues?.length === 0 && (
+            {!allLoading && filteredAllIssues?.length === 0 && (
               <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px' }}>
-                No open issues.
+                {filter ? 'No matching issues.' : 'No open issues.'}
               </div>
             )}
 
-            {!allLoading && allIssues?.map((issue) => (
+            {!allLoading && filteredAllIssues?.map((issue) => (
               <AllIssueRow key={issue.number} issue={issue}
                 isClauboy={clauboyIssueNumbers.has(issue.number)}
                 onStart={() => void handleStartIssue(issue.number)}
