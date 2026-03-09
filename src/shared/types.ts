@@ -163,7 +163,7 @@ export const DEFAULT_BUTTONS: Button[] = [
     label: 'Start',
     type: 'prompt',
     prompt:
-      'Du arbeitest an Issue #{{ISSUE_NUMBER}}: "{{ISSUE_TITLE}}". Der vollständige Issue-Text ist:\n\n{{ISSUE_BODY}}\n\nBitte lies das Issue sorgfältig und beginne mit der Implementierung. Nutze `gh issue view {{ISSUE_NUMBER}}` um aktuelle Kommentare zu sehen.'
+      'Du arbeitest an Issue #{{ISSUE_NUMBER}}. Das Issue findest du hier: {{ISSUE_URL}}\n\nLies das Issue sorgfältig mit `gh issue view {{ISSUE_NUMBER}}` und beginne mit der Implementierung. Nutze `gh issue view {{ISSUE_NUMBER}} --comments` um aktuelle Kommentare zu sehen.'
   },
   {
     id: 'conceive',
