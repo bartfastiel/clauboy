@@ -7,7 +7,7 @@ import {
 import { appState } from './state'
 import * as path from 'path'
 import * as fs from 'fs'
-import { startContainer, listRunningContainers, TERMINAL_PORT_BASE } from './docker'
+import { startContainer, listRunningContainers, captureAgentPane, TERMINAL_PORT_BASE } from './docker'
 import { loadConfig } from './config'
 import { ClauboyLabel, IssueState } from '../shared/types'
 import { logger } from './logger'
@@ -84,7 +84,8 @@ async function runPollTick(): Promise<void> {
         terminalPort: null,
         clauboyLabels,
         lastKnownCommentId: null,
-        loadingStep: null
+        loadingStep: null,
+        agentActivity: null
       }
 
       // Update issue data
@@ -169,6 +170,20 @@ async function runPollTick(): Promise<void> {
             appState.updateIssue(issue.number, issueState)
           }
         }
+      }
+
+      // Detect agent activity state via tmux pane capture
+      if (issueState.containerStatus === 'running') {
+        try {
+          const pane = await captureAgentPane(issue.number)
+          const trimmed = pane.trimEnd()
+          // Claude's idle prompt ends with "❯ " on its own line
+          issueState.agentActivity = trimmed.endsWith('❯') || trimmed.endsWith('❯ ') ? 'waiting' : 'working'
+        } catch {
+          issueState.agentActivity = null
+        }
+      } else {
+        issueState.agentActivity = null
       }
 
       // Check for new comments when container is running

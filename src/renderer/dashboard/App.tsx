@@ -14,7 +14,12 @@ function getLabelBadge(labels: ClauboyLabel[]): { text: string; className: strin
 
 function IssueRow({ issueState, onClick }: { issueState: IssueState; onClick: () => void }): React.ReactElement {
   const badge = getLabelBadge(issueState.clauboyLabels)
-  const containerIcon = issueState.containerStatus === 'running' ? '🟢' : issueState.containerStatus === 'error' ? '🔴' : '⚪'
+  const containerIcon = issueState.containerStatus === 'running'
+    ? (issueState.agentActivity === 'waiting' ? '🟡' : issueState.agentActivity === 'working' ? '🟢' : '🟢')
+    : issueState.containerStatus === 'error' ? '🔴' : '⚪'
+  const activityTitle = issueState.containerStatus === 'running'
+    ? (issueState.agentActivity === 'waiting' ? 'Waiting for input' : issueState.agentActivity === 'working' ? 'Working…' : 'Running')
+    : issueState.containerStatus
 
   return (
     <div
@@ -26,7 +31,7 @@ function IssueRow({ issueState, onClick }: { issueState: IssueState; onClick: ()
       onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-secondary)')}
       onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
     >
-      <span style={{ fontSize: '12px' }}>{containerIcon}</span>
+      <span style={{ fontSize: '12px' }} title={activityTitle}>{containerIcon}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
           <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>#{issueState.issue.number}</span>
@@ -45,6 +50,11 @@ function IssueRow({ issueState, onClick }: { issueState: IssueState; onClick: ()
         </div>
         {issueState.loadingStep && (
           <div style={{ fontSize: '11px', color: 'var(--accent)' }}>{issueState.loadingStep}</div>
+        )}
+        {!issueState.loadingStep && issueState.containerStatus === 'running' && issueState.agentActivity && (
+          <div style={{ fontSize: '11px', color: issueState.agentActivity === 'waiting' ? 'var(--text-muted)' : 'var(--accent)' }}>
+            {issueState.agentActivity === 'waiting' ? '⏸ Waiting for input' : '⚙ Working…'}
+          </div>
         )}
       </div>
       <span className={badge.className}>{badge.text}</span>

@@ -74,6 +74,7 @@ export interface IssueState {
   loadingStep: string | null
   errorMessage?: string | null
   agentIsRunning?: boolean
+  agentActivity: 'waiting' | 'working' | null
 }
 
 export interface AppState {

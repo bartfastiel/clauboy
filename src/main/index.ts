@@ -49,7 +49,8 @@ async function startupSync(): Promise<void> {
         terminalPort: container && containerStatus === 'running' ? 37680 + issue.number : null,
         clauboyLabels,
         lastKnownCommentId: null,
-        loadingStep: null
+        loadingStep: null,
+        agentActivity: null
       }
     })
 

@@ -326,6 +326,19 @@ function parseMemory(memStr: string): number {
   }
 }
 
+export async function captureAgentPane(issueNumber: number): Promise<string> {
+  return new Promise((resolve) => {
+    const proc = spawn('docker', [
+      'exec', `clauboy-issue-${issueNumber}`,
+      'tmux', 'capture-pane', '-t', 'claude-agent', '-p'
+    ])
+    let out = ''
+    proc.stdout.on('data', (d: Buffer) => { out += d.toString() })
+    proc.on('close', () => resolve(out))
+    proc.on('error', () => resolve(''))
+  })
+}
+
 export function openAuthTerminal(issueNumber: number): void {
   const containerName = `clauboy-issue-${issueNumber}`
   const cmd = `docker exec -it ${containerName} claude auth login`
