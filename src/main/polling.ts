@@ -6,7 +6,7 @@ import {
 } from './github'
 import { appState } from './state'
 import { startContainer } from './docker'
-import { createWorktree, worktreeExists } from './worktree'
+import { createWorktree, worktreeExists, worktreePath } from './worktree'
 import { loadConfig } from './config'
 import { ClauboyLabel, IssueState } from '../shared/types'
 
@@ -101,7 +101,7 @@ async function runPollTick(): Promise<void> {
 
           try {
             const wtPath = worktreeExists(config, issue.number)
-              ? undefined
+              ? worktreePath(config, issue.number)
               : await createWorktree(config, issue.number)
 
             issueState.worktreePath = wtPath ?? issueState.worktreePath
