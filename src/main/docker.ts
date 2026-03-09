@@ -5,7 +5,7 @@ import * as fs from 'fs'
 import * as os from 'os'
 import { WebContents } from 'electron'
 import { Config } from '../shared/types'
-
+import { getInstallationToken } from './github'
 import { logger } from './logger'
 
 export const TERMINAL_PORT_BASE = 37680
@@ -79,9 +79,17 @@ export async function startContainer(
     logger.debug(`Docker: no existing container "${containerName}" to remove`)
   }
 
+  // Prefer a short-lived GitHub App installation token so the agent posts as
+  // the app bot account rather than the owner's personal account.
+  const installationToken = await getInstallationToken()
+  const agentGhToken = installationToken ?? config.github.token
+  if (installationToken) {
+    logger.info(`Docker: using GitHub App installation token for issue #${issueNumber}`)
+  }
+
   const env: string[] = []
   env.push(`ISSUE_NUMBER=${issueNumber}`)
-  env.push(`GH_TOKEN=${config.github.token}`)
+  env.push(`GH_TOKEN=${agentGhToken}`)
   env.push(`GITHUB_OWNER=${config.github.owner}`)
   env.push(`GITHUB_REPO=${config.github.repo}`)
 

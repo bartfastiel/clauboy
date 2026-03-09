@@ -214,6 +214,21 @@ export async function getNewComments(
   return comments.slice(sinceIdx + 1)
 }
 
+export async function getInstallationToken(): Promise<string | null> {
+  if (!currentConfig) return null
+  const { appId, privateKey, installationId } = currentConfig.github
+  if (!appId || !privateKey || !installationId) return null
+
+  try {
+    const auth = createAppAuth({ appId, privateKey })
+    const result = await auth({ type: 'installation', installationId: parseInt(installationId, 10) })
+    return result.token
+  } catch (err) {
+    console.error('Failed to get installation token:', err)
+    return null
+  }
+}
+
 export async function getLabelEvents(issueNumber: number): Promise<
   Array<{
     event: string
