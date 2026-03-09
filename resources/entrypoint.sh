@@ -24,8 +24,8 @@ fi
 # Checkout or create issue branch
 if [ -n "$ISSUE_NUMBER" ] && [ -d "/workspace/.git" ]; then
     cd /workspace
-    git fetch origin "issue-${ISSUE_NUMBER}" 2>/dev/null \
-        && git checkout "issue-${ISSUE_NUMBER}" \
+    git fetch origin "issue-${ISSUE_NUMBER}" 2>/dev/null || true
+    git checkout "issue-${ISSUE_NUMBER}" 2>/dev/null \
         || git checkout -b "issue-${ISSUE_NUMBER}"
     echo "[clauboy] Checked out branch issue-${ISSUE_NUMBER}"
 fi
