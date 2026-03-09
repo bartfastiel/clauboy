@@ -69,13 +69,11 @@ export function registerIpcHandlers(): void {
     const win = getAgentWindow(issueNumber)
     const webContents = win?.webContents
 
-    if (!webContents || webContents.isDestroyed()) return
-
-    // Step 1: Run commit/push prompt and wait for completion
-    if (!webContents.isDestroyed()) {
+    // Step 1: Ask agent to commit/push any remaining work
+    if (webContents && !webContents.isDestroyed()) {
       await runAgentPrompt(
         issueNumber,
-        'Gibt es uncommittete Änderungen oder ungepushte Commits? Bitte committen und pushen.',
+        'Any uncommitted changes or unpushed commits? Please commit and push now.',
         webContents
       ).catch((err) => console.error('Teardown prompt failed:', err))
     }
@@ -83,37 +81,28 @@ export function registerIpcHandlers(): void {
     const state = appState.getState()
     const issueState = state.issues.find((i) => i.issue.number === issueNumber)
 
-    if (!issueState) return
-
     const config = loadConfig()
 
-    // Step 3: Stop container
-    if (issueState.containerId) {
+    // Step 2: Stop container — try by stored ID first, fall back to well-known name
+    if (issueState?.containerId) {
       await stopContainer(issueState.containerId)
+    } else {
+      await stopContainer(`clauboy-issue-${issueNumber}`)
     }
 
-    // Step 4: Remove worktree
-    if (issueState.worktreePath) {
-      await removeWorktree(config, issueNumber)
-    }
-
-    // Step 5: Update label
-    await setLabel(
-      issueNumber,
-      ['clauboy:done'],
-      ['clauboy:running', 'clauboy:paused', 'clauboy:error', 'clauboy']
+    // Step 3: Remove worktree
+    await removeWorktree(config, issueNumber).catch((err) =>
+      console.error('removeWorktree failed:', err)
     )
 
-    // Step 6: Post bot comment
-    await postComment(issueNumber, '🤠 Agent beendet.')
+    // Step 4: Remove ALL clauboy labels so issue disappears from the list
+    await setLabel(issueNumber, [], ['clauboy', 'clauboy:running', 'clauboy:done', 'clauboy:paused', 'clauboy:error'])
 
-    // Update state
-    appState.updateIssue(issueNumber, {
-      containerId: null,
-      containerStatus: 'stopped',
-      worktreePath: null,
-      clauboyLabels: ['clauboy:done']
-    })
+    // Step 5: Post bot comment
+    await postComment(issueNumber, '🤠 Agent done.')
+
+    // Step 6: Remove issue from state immediately so it vanishes from the list
+    appState.removeIssue(issueNumber)
 
     // Step 7: Close agent window
     closeAgentWindow(issueNumber)

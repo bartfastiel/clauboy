@@ -172,17 +172,21 @@ export async function startContainer(
   return container.id
 }
 
-export async function stopContainer(containerId: string): Promise<void> {
+export async function stopContainer(containerIdOrName: string): Promise<void> {
   const d = getDocker()
   try {
-    const container = d.getContainer(containerId)
+    const container = d.getContainer(containerIdOrName)
     const info = await container.inspect()
-    const issueNum = parseInt(info.Config.Labels?.['clauboy.issue'] ?? '0', 10)
-    logger.info(`Docker: stopping container id=${containerId.slice(0, 12)} issue=${issueNum}`)
+    const short = containerIdOrName.slice(0, 12)
+    if (!info.State.Running) {
+      logger.info(`Docker: container ${short} already stopped`)
+      return
+    }
+    logger.info(`Docker: stopping container ${short}`)
     await container.stop({ t: 10 })
-    logger.info(`Docker: container id=${containerId.slice(0, 12)} stopped`)
+    logger.info(`Docker: container ${short} stopped`)
   } catch (err) {
-    logger.error(`Docker: failed to stop container id=${containerId.slice(0, 12)} — ${err instanceof Error ? err.message : String(err)}`)
+    logger.error(`Docker: failed to stop container ${containerIdOrName.slice(0, 12)} — ${err instanceof Error ? err.message : String(err)}`)
   }
 }
 

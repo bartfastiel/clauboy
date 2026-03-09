@@ -33,6 +33,12 @@ class StateManager extends EventEmitter {
     this.emit('state-update', this.state)
   }
 
+  removeIssue(issueNumber: number): void {
+    this.state = { ...this.state, issues: this.state.issues.filter((i) => i.issue.number !== issueNumber) }
+    this.broadcastState()
+    this.emit('state-update', this.state)
+  }
+
   broadcastState(): void {
     const state = this.getState()
     for (const win of BrowserWindow.getAllWindows()) {
