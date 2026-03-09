@@ -14,6 +14,7 @@ import { logger } from './logger'
 
 let pollingInterval: ReturnType<typeof setInterval> | null = null
 let isPolling = false
+let rateLimitBackoffUntil = 0
 
 export function startPolling(intervalMs: number = 30000): void {
   if (pollingInterval) return
@@ -39,6 +40,10 @@ export async function forceSync(): Promise<void> {
 
 async function runPollTick(): Promise<void> {
   if (isPolling) return
+  if (Date.now() < rateLimitBackoffUntil) {
+    logger.warn(`Poll tick skipped — rate limit backoff until ${new Date(rateLimitBackoffUntil).toISOString()}`)
+    return
+  }
   isPolling = true
 
   try {
@@ -184,7 +189,13 @@ async function runPollTick(): Promise<void> {
     logger.debug(`Poll tick complete — ${issueStates.length} issue(s) in state`)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    logger.error(`Poll tick failed — ${msg}`)
+    // GitHub rate limit: back off for 5 minutes
+    if (err instanceof Error && 'status' in err && (err as { status: number }).status === 403 || msg.includes('rate limit')) {
+      rateLimitBackoffUntil = Date.now() + 5 * 60 * 1000
+      logger.warn(`Poll tick: GitHub rate limit hit — backing off until ${new Date(rateLimitBackoffUntil).toISOString()}`)
+    } else {
+      logger.error(`Poll tick failed — ${msg}`)
+    }
     appState.setState({ isSyncing: false })
   } finally {
     isPolling = false
