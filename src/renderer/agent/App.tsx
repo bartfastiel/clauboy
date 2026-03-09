@@ -175,6 +175,7 @@ export default function AgentApp(): React.ReactElement {
   const [config, setConfig] = useState<Config | null>(null)
   const [customPrompt, setCustomPrompt] = useState('')
   const [terminalReady, setTerminalReady] = useState(false)
+  const webviewRef = useRef<Electron.WebviewTag>(null)
   const customPromptRef = useRef<HTMLInputElement>(null)
   const { t } = useI18n()
 
@@ -248,6 +249,15 @@ export default function AgentApp(): React.ReactElement {
   React.useEffect(() => {
     if (isRunning && !prevRunning.current) setTerminalReady(false)
     prevRunning.current = isRunning
+  }, [isRunning])
+
+  // Attach dom-ready via ref — onDomReady prop doesn't work on <webview>
+  React.useEffect(() => {
+    const wv = webviewRef.current
+    if (!wv) return
+    const handler = (): void => setTerminalReady(true)
+    wv.addEventListener('dom-ready', handler)
+    return () => wv.removeEventListener('dom-ready', handler)
   }, [isRunning])
   const isPaused = issueState?.clauboyLabels?.includes('clauboy:paused') ?? false
   const agentIsRunning = issueState?.agentIsRunning ?? false
@@ -371,9 +381,9 @@ export default function AgentApp(): React.ReactElement {
               </div>
             )}
             <webview
+              ref={webviewRef}
               src={`http://localhost:${issueState.terminalPort ?? (37680 + issueNumber)}`}
               style={{ width: '100%', height: '100%' }}
-              onDomReady={() => setTerminalReady(true)}
             />
           </div>
           <div style={{
