@@ -21,7 +21,7 @@ import {
   getDockerfilePath,
   openAuthTerminal
 } from './docker'
-import { createWorktree, removeWorktree } from './worktree'
+import { removeWorktree } from './worktree'
 import { forceSync } from './polling'
 import { cloneRepo } from './worktree'
 import { setLabel, postComment, buildCreateIssueUrl, initGitHub, fetchAllOpenIssues } from './github'

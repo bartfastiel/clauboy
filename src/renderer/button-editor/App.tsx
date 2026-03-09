@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useId } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Button, ButtonType } from '../../shared/types'
 
 const DUMMY_ISSUE = {
@@ -24,8 +24,6 @@ export default function ButtonEditorApp(): React.ReactElement {
   const [saved, setSaved] = useState(false)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
   const dragSourceId = React.useRef<string | null>(null)
-  const uid = useId()
-
   useEffect(() => {
     window.clauboy.getConfig().then((cfg) => {
       setButtons(cfg.buttons)

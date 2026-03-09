@@ -233,7 +233,7 @@ export async function getLabelEvents(issueNumber: number): Promise<
   })
 
   return response.data
-    .filter((e) => e.event === 'labeled' || e.event === 'unlabeled')
+    .filter((e): e is typeof e & { event: string } => e.event === 'labeled' || e.event === 'unlabeled')
     .map((e) => ({
       event: e.event,
       label:

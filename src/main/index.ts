@@ -1,6 +1,6 @@
 import { app, BrowserWindow, Menu } from 'electron'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
-import { loadConfig, saveConfig } from './config'
+import { loadConfig } from './config'
 import { initGitHub, ensureLabelsExist, fetchClauboyIssues } from './github'
 import { initDocker, listRunningContainers } from './docker'
 import { startPolling, stopPolling } from './polling'

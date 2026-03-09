@@ -114,8 +114,7 @@ export async function startContainer(
     Binds: [
       `${absoluteWtPath}:/workspace`,
       `${claudeAuthDir.replace(/\\/g, '/')}:/home/agent/.claude`
-    ],
-    WorkingDir: '/workspace'
+    ]
   }
 
   if (config.docker.memoryLimit) {
@@ -194,8 +193,9 @@ export async function runAgentPrompt(
   })
 
   await new Promise<void>((resolve, reject) => {
-    exec.start({}, (err: Error | null, stream: NodeJS.ReadableStream) => {
+    exec.start({}, (err: Error | null, stream: NodeJS.ReadableStream | undefined) => {
       if (err) return reject(err)
+      if (!stream) return reject(new Error('No stream returned from exec.start'))
 
       const writer = {
         write: (chunk: Buffer): boolean => {
@@ -206,16 +206,16 @@ export async function runAgentPrompt(
         }
       }
 
-      d.modem.demuxStream(stream, writer, writer)
+      d.modem.demuxStream(stream, writer as unknown as NodeJS.WritableStream, writer as unknown as NodeJS.WritableStream)
 
       stream.on('end', () => {
         logger.info(`Docker: claude exec finished for issue #${issueNumber}`)
         conversationStarted.set(issueNumber, true)
         resolve()
       })
-      stream.on('error', (err) => {
-        logger.error(`Docker: claude exec stream error for issue #${issueNumber} — ${err.message}`)
-        reject(err)
+      stream.on('error', (streamErr: Error) => {
+        logger.error(`Docker: claude exec stream error for issue #${issueNumber} — ${streamErr.message}`)
+        reject(streamErr)
       })
     })
   })

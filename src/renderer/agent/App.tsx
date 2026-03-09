@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
-import { AppState, Button, Config, IssueState, LogEntry } from '../../shared/types'
+import type { AppState, Button, Config, IssueState, LogEntry } from '../../shared/types'
 import { useI18n } from '../shared/useI18n'
 import TerminalComponent from './Terminal'
 
@@ -86,14 +86,10 @@ function expandTemplateVars(
 
 function ButtonBar({
   buttons,
-  issueState,
-  config,
   onAction,
   disabled
 }: {
   buttons: Button[]
-  issueState: IssueState
-  config: Config
   onAction: (btn: Button) => void
   disabled?: boolean
 }): React.ReactElement {
@@ -268,8 +264,6 @@ export default function AgentApp(): React.ReactElement {
         </span>
         <ButtonBar
           buttons={config.buttons}
-          issueState={issueState}
-          config={config}
           onAction={handleButtonAction}
           disabled={agentIsRunning}
         />
