@@ -58,6 +58,124 @@ function StatusRow({ label, state, detail }: { label: string; state: ValidationS
   )
 }
 
+function BotSetupStep({
+  config,
+  setConfig,
+  appCreating,
+  appWaitingInstall,
+  appInstallUrl,
+  error,
+  onCreateApp,
+  onNext
+}: {
+  config: Config
+  setConfig: React.Dispatch<React.SetStateAction<Config>>
+  appCreating: boolean
+  appWaitingInstall: boolean
+  appInstallUrl: string
+  error: string
+  onCreateApp: () => void
+  onNext: () => void
+}): React.ReactElement {
+  const botConfigured = !!(config.github.appId && config.github.installationId && config.github.privateKey)
+
+  // Auto-start bot creation when entering this step (if not already created/in progress)
+  const autoStarted = useRef(false)
+  useEffect(() => {
+    if (!config.github.appId && !appCreating && !appWaitingInstall && !autoStarted.current) {
+      autoStarted.current = true
+      onCreateApp()
+    }
+  }, [])
+
+  // Auto-advance when bot is fully configured
+  useEffect(() => {
+    if (botConfigured && !appWaitingInstall) {
+      onNext()
+    }
+  }, [botConfigured, appWaitingInstall])
+
+  const updateGithub = (key: keyof Config['github'], value: string): void =>
+    setConfig((c) => ({ ...c, github: { ...c.github, [key]: value } }))
+
+  return (
+    <div>
+      <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', fontSize: '13px' }}>
+        Setting up a GitHub Bot so agents post comments as a bot, not your personal account.
+      </p>
+
+      {appCreating && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '24px 0' }}>
+          <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>⏳ Creating bot app on GitHub…</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Confirm in the browser window that just opened.</span>
+        </div>
+      )}
+
+      {appWaitingInstall && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '24px 0' }}>
+          <StatusRow label="Bot app created" state="done" />
+          <span style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
+            Now install the app on your GitHub account…
+          </span>
+          <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
+            Approve in the browser window that just opened.
+          </span>
+          <button onClick={() => window.clauboy.openExternal(appInstallUrl).catch(console.error)} style={{ fontSize: '11px' }}>
+            Reopen install page
+          </button>
+        </div>
+      )}
+
+      {botConfigured && !appWaitingInstall && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '24px 0' }}>
+          <StatusRow label="Bot app created" state="done" />
+          <StatusRow label="Bot app installed" state="done" />
+        </div>
+      )}
+
+      {/* Manual fallback — only shown if auto-creation failed */}
+      {error && !appCreating && !appWaitingInstall && (
+        <details style={{ marginTop: '8px' }}>
+          <summary style={{ cursor: 'pointer', color: 'var(--text-secondary)', fontSize: '12px' }}>Enter credentials manually</summary>
+          <div style={{ marginTop: '12px' }}>
+            <div className="form-group">
+              <label>App ID</label>
+              <input value={config.github.appId ?? ''} onChange={(e) => updateGithub('appId', e.target.value)} placeholder="123456" />
+            </div>
+            <div className="form-group">
+              <label>Installation ID</label>
+              <input value={config.github.installationId ?? ''} onChange={(e) => updateGithub('installationId', e.target.value)} placeholder="87654321" />
+            </div>
+            <div className="form-group">
+              <label>Private Key (PEM)</label>
+              <textarea
+                value={config.github.privateKey ?? ''}
+                onChange={(e) => updateGithub('privateKey', e.target.value)}
+                placeholder="-----BEGIN RSA PRIVATE KEY-----…"
+                style={{ minHeight: '80px', fontFamily: 'monospace', fontSize: '11px' }}
+              />
+            </div>
+            {botConfigured && (
+              <button className="primary" onClick={onNext}>Next →</button>
+            )}
+          </div>
+        </details>
+      )}
+
+      {/* Retry button if creation failed */}
+      {error && !appCreating && !appWaitingInstall && !config.github.appId && (
+        <button
+          className="primary"
+          onClick={() => { autoStarted.current = false; onCreateApp() }}
+          style={{ marginTop: '12px', width: '100%' }}
+        >
+          Retry Bot Setup
+        </button>
+      )}
+    </div>
+  )
+}
+
 export default function OnboardingApp(): React.ReactElement {
   const [step, setStep] = useState<Step>(1)
   const [config, setConfig] = useState<Config>(defaultConfig)
@@ -291,83 +409,16 @@ export default function OnboardingApp(): React.ReactElement {
 
         {/* ── Step 2: GitHub Bot ── */}
         {step === 2 && (
-          <div>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', fontSize: '13px' }}>
-              Clauboy can post issue comments as a dedicated bot account instead of your personal account.
-            </p>
-
-            {!appCreating && !appWaitingInstall && !config.github.appId && (
-              <button
-                className="primary"
-                onClick={() => void handleCreateApp()}
-                style={{ marginBottom: '12px', width: '100%' }}
-              >
-                ✨ Create Bot App Automatically
-              </button>
-            )}
-
-            {appCreating && (
-              <div style={{ marginBottom: '12px', color: 'var(--text-secondary)', fontSize: '13px' }}>
-                ⏳ Opening GitHub to create your bot app…
-              </div>
-            )}
-
-            {appWaitingInstall && (
-              <div style={{ marginBottom: '12px', fontSize: '13px' }}>
-                <div style={{ color: 'var(--accent-success)', marginBottom: '8px' }}>✓ App created!</div>
-                <div style={{ color: 'var(--text-secondary)' }}>
-                  ⏳ Waiting for you to install the app on your account…
-                  <br /><br />
-                  <button onClick={() => window.clauboy.openExternal(appInstallUrl).catch(console.error)} style={{ fontSize: '11px' }}>
-                    🔗 Reopen install page
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {config.github.appId && !appWaitingInstall && (
-              <div style={{ marginBottom: '12px' }}>
-                <StatusRow label="App created" state="done" detail={`ID: ${config.github.appId}`} />
-                {config.github.installationId
-                  ? <StatusRow label="App installed" state="done" detail={`Installation: ${config.github.installationId}`} />
-                  : <StatusRow label="Waiting for installation…" state="loading" />
-                }
-              </div>
-            )}
-
-            <button onClick={() => setStep(3)} style={{ marginBottom: '16px', width: '100%', opacity: 0.6 }}>
-              Skip → Use my PAT for bot comments
-            </button>
-
-            {/* Manual fallback */}
-            {(config.github.appId || error) && (
-              <details style={{ marginTop: '8px' }}>
-                <summary style={{ cursor: 'pointer', color: 'var(--text-secondary)', fontSize: '12px' }}>Manual credentials</summary>
-                <div style={{ marginTop: '12px' }}>
-                  <div className="form-group">
-                    <label>App ID</label>
-                    <input value={config.github.appId ?? ''} onChange={(e) => updateGithub('appId', e.target.value)} placeholder="123456" />
-                  </div>
-                  <div className="form-group">
-                    <label>Installation ID</label>
-                    <input value={config.github.installationId ?? ''} onChange={(e) => updateGithub('installationId', e.target.value)} placeholder="87654321" />
-                  </div>
-                  <div className="form-group">
-                    <label>Private Key (PEM)</label>
-                    <textarea
-                      value={config.github.privateKey ?? ''}
-                      onChange={(e) => updateGithub('privateKey', e.target.value)}
-                      placeholder="-----BEGIN RSA PRIVATE KEY-----…"
-                      style={{ minHeight: '80px', fontFamily: 'monospace', fontSize: '11px' }}
-                    />
-                  </div>
-                  {config.github.appId && config.github.installationId && config.github.privateKey && (
-                    <button className="primary" onClick={() => setStep(3)}>Next →</button>
-                  )}
-                </div>
-              </details>
-            )}
-          </div>
+          <BotSetupStep
+            config={config}
+            setConfig={setConfig}
+            appCreating={appCreating}
+            appWaitingInstall={appWaitingInstall}
+            appInstallUrl={appInstallUrl}
+            error={error}
+            onCreateApp={() => void handleCreateApp()}
+            onNext={() => setStep(3)}
+          />
         )}
 
         {/* ── Step 3: Repository ── */}

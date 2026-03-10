@@ -72,6 +72,124 @@ function HelpLink({ url, label }: { url: string; label: string }): React.ReactEl
   )
 }
 
+function SettingsBotTab({ config, setConfig }: {
+  config: Config
+  setConfig: React.Dispatch<React.SetStateAction<Config | null>>
+}): React.ReactElement {
+  const botConfigured = !!(config.github.appId && config.github.installationId && config.github.privateKey)
+  const [showDetails, setShowDetails] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [waitingInstall, setWaitingInstall] = useState(false)
+  const [installUrl, setInstallUrl] = useState('')
+  const [botError, setBotError] = useState('')
+
+  const updateGithub = (key: keyof Config['github'], value: string): void =>
+    setConfig((c) => c ? { ...c, github: { ...c.github, [key]: value } } : c)
+
+  const handleCreateBot = async (): Promise<void> => {
+    setBotError('')
+    setCreating(true)
+    try {
+      const creds = await window.clauboy.createGithubApp(config.github.owner)
+      setConfig((c) => c ? { ...c, github: { ...c.github, appId: creds.appId, privateKey: creds.privateKey } } : c)
+      setInstallUrl(creds.installUrl)
+      setCreating(false)
+      setWaitingInstall(true)
+      await window.clauboy.openExternal(creds.installUrl)
+      for (let i = 0; i < 60; i++) {
+        await new Promise((r) => setTimeout(r, 3000))
+        const id = await window.clauboy.getInstallationId(creds.appId, creds.privateKey, config.github.owner)
+        if (id) {
+          setConfig((c) => c ? { ...c, github: { ...c.github, installationId: id } } : c)
+          setWaitingInstall(false)
+          return
+        }
+      }
+      setBotError('Could not detect app installation after 3 minutes.')
+      setWaitingInstall(false)
+    } catch (err) {
+      setBotError(String(err))
+      setCreating(false)
+      setWaitingInstall(false)
+    }
+  }
+
+  if (botConfigured && !showDetails) {
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+          <span style={{ color: 'var(--accent-success)', fontSize: '16px' }}>✓</span>
+          <span style={{ fontSize: '14px', fontWeight: 600 }}>Bot configured</span>
+        </div>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '12px', marginBottom: '12px' }}>
+          Agent comments and PRs will appear as the bot account.
+        </p>
+        <button onClick={() => setShowDetails(true)} style={{ fontSize: '11px' }}>
+          Show details
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {!botConfigured && !creating && !waitingInstall && (
+        <div>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '12px' }}>
+            No bot configured. Agent comments will appear as your personal account.
+          </p>
+          <button className="primary" onClick={() => void handleCreateBot()} style={{ width: '100%' }}>
+            Set up Bot
+          </button>
+        </div>
+      )}
+
+      {creating && (
+        <div style={{ color: 'var(--text-secondary)', fontSize: '13px', padding: '12px 0' }}>
+          ⏳ Creating bot app on GitHub… Confirm in the browser.
+        </div>
+      )}
+
+      {waitingInstall && (
+        <div style={{ fontSize: '13px', padding: '12px 0' }}>
+          <div style={{ color: 'var(--accent-success)', marginBottom: '8px' }}>✓ App created</div>
+          <div style={{ color: 'var(--text-secondary)' }}>⏳ Install the app in the browser…</div>
+          <button onClick={() => window.clauboy.openExternal(installUrl).catch(console.error)} style={{ fontSize: '11px', marginTop: '8px' }}>
+            Reopen install page
+          </button>
+        </div>
+      )}
+
+      {botError && (
+        <div style={{ marginTop: '8px', padding: '10px', background: 'rgba(224,82,82,0.1)', border: '1px solid rgba(224,82,82,0.3)', borderRadius: 'var(--radius)', color: 'var(--accent-danger)', fontSize: '12px' }}>
+          {botError}
+        </div>
+      )}
+
+      {/* Raw fields shown on request or when editing */}
+      {(showDetails || botError) && (
+        <div style={{ marginTop: '16px' }}>
+          <div className="form-group">
+            <label>App ID</label>
+            <input value={config.github.appId ?? ''} onChange={(e) => updateGithub('appId', e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>Installation ID</label>
+            <input value={config.github.installationId ?? ''} onChange={(e) => updateGithub('installationId', e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>Private Key PEM</label>
+            <textarea value={config.github.privateKey ?? ''} onChange={(e) => updateGithub('privateKey', e.target.value)} style={{ fontFamily: 'monospace', fontSize: '11px', minHeight: '80px' }} />
+          </div>
+          {showDetails && (
+            <button onClick={() => setShowDetails(false)} style={{ fontSize: '11px' }}>Hide details</button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function SettingsApp(): React.ReactElement {
   const [config, setConfig] = useState<Config | null>(null)
   const [savedConfig, setSavedConfig] = useState<Config | null>(null)
@@ -211,20 +329,7 @@ export default function SettingsApp(): React.ReactElement {
 
         {/* Step 1: GitHub Bot */}
         {step === 1 && (
-          <>
-            <div className="form-group">
-              <label>GitHub App ID (optional)</label>
-              <input value={config.github.appId ?? ''} onChange={(e) => updateGithub('appId', e.target.value)} />
-            </div>
-            <div className="form-group">
-              <label>Installation ID (optional)</label>
-              <input value={config.github.installationId ?? ''} onChange={(e) => updateGithub('installationId', e.target.value)} />
-            </div>
-            <div className="form-group">
-              <label>Private Key PEM (optional)</label>
-              <textarea value={config.github.privateKey ?? ''} onChange={(e) => updateGithub('privateKey', e.target.value)} style={{ fontFamily: 'monospace', fontSize: '11px', minHeight: '80px' }} />
-            </div>
-          </>
+          <SettingsBotTab config={config} setConfig={setConfig} />
         )}
 
         {/* Step 2: Repository */}
