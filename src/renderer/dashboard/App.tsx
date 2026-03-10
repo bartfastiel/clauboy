@@ -156,7 +156,7 @@ function IssueRow({ issue, state, onClick, onRetry, onStart, starting }: {
             {issue.title}
           </span>
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '2px' }}>
+        <div style={{ display: 'flex', gap: '4px', marginTop: '2px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
           {issue.labels.map((label) => (
             <span key={label.name} style={{
               fontSize: '10px', color: 'var(--text-muted)'
@@ -368,11 +368,12 @@ export default function DashboardApp(): React.ReactElement {
           }}
         >
           <span>{showAll ? '▾' : '▸'}</span>
-          <span style={{ flex: 1 }}>{showAll ? 'Hide other issues' : 'Show all issues'}</span>
+          <span style={{ flex: 1, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{showAll ? 'Hide other issues' : 'Show all issues'}</span>
           <button
             className="icon-btn"
             onClick={(e) => { e.stopPropagation(); window.clauboy.createIssueUrl().catch(console.error) }}
             title="Create new issue on GitHub"
+            style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
           >+ New issue</button>
         </div>
 
