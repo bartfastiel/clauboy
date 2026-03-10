@@ -148,22 +148,23 @@ label {
   line-height: 1.4;
 }
 
-.badge-running {
-  background: rgba(46, 164, 79, 0.2);
+.badge-starting {
+  background: rgba(74, 158, 255, 0.15);
+  color: #4a9eff;
+  border: 1px solid rgba(74, 158, 255, 0.25);
+}
+
+.badge-busy {
+  background: rgba(46, 164, 79, 0.15);
   color: #4caf50;
-  border: 1px solid rgba(46, 164, 79, 0.3);
+  border: 1px solid rgba(46, 164, 79, 0.25);
 }
 
-.badge-done {
-  background: rgba(137, 87, 229, 0.2);
-  color: #ab68ff;
-  border: 1px solid rgba(137, 87, 229, 0.3);
-}
-
-.badge-paused {
-  background: rgba(227, 179, 65, 0.2);
-  color: #ffa726;
-  border: 1px solid rgba(227, 179, 65, 0.3);
+.badge-waiting {
+  background: rgba(255, 183, 77, 0.2);
+  color: #ffb74d;
+  border: 1px solid rgba(255, 183, 77, 0.35);
+  font-weight: 700;
 }
 
 .badge-error {
@@ -172,10 +173,14 @@ label {
   border: 1px solid rgba(215, 58, 73, 0.3);
 }
 
-.badge-queued {
-  background: rgba(74, 158, 255, 0.2);
+.badge-start {
+  background: rgba(74, 158, 255, 0.1);
   color: #4a9eff;
   border: 1px solid rgba(74, 158, 255, 0.3);
+}
+
+.badge-start:hover:not(:disabled) {
+  background: rgba(74, 158, 255, 0.25);
 }
 
 .badge-colleague {

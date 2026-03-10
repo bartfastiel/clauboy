@@ -181,7 +181,7 @@ async function runPollTick(): Promise<void> {
       }
 
       // Determine who added the 'clauboy' label (cached — only fetch once per issue)
-      if (issueState.labeledBy === null && clauboyLabels.includes('clauboy')) {
+      if (!issueState.labeledBy && clauboyLabels.includes('clauboy')) {
         logger.info(`Issue #${issue.number}: checking label events to determine who labeled it`)
         const events = await getLabelEvents(issue.number)
         const labelEvent = events
