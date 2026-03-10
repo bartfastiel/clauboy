@@ -153,7 +153,8 @@ export const IPC = {
   AGENT_AUTH_TERMINAL: 'agent:auth-terminal',
   AGENT_TERMINAL_URL: 'agent:terminal-url',
   AGENT_CLEANUP_ORPHAN: 'agent:cleanup-orphan',
-  LOG_DATA: 'log:data'
+  LOG_DATA: 'log:data',
+  CONFIG_UPDATE: 'config:update'
 } as const
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC]

@@ -1,4 +1,4 @@
-import { ipcMain, dialog, shell } from 'electron'
+import { ipcMain, dialog, shell, BrowserWindow } from 'electron'
 import { spawn } from 'child_process'
 import { IPC, Config } from '../shared/types'
 import { Octokit } from '@octokit/rest'
@@ -35,6 +35,9 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IPC.CONFIG_SAVE, (_event, config: Config) => {
     saveConfig(config)
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) win.webContents.send(IPC.CONFIG_UPDATE, config)
+    }
     return true
   })
 

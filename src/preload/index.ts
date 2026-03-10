@@ -130,6 +130,12 @@ const clauboyAPI = {
   cleanupOrphan: (worktreePath: string): Promise<boolean> =>
     ipcRenderer.invoke(IPC.AGENT_CLEANUP_ORPHAN, worktreePath),
 
+  onConfigUpdate: (cb: (config: Config) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, config: Config): void => cb(config)
+    ipcRenderer.on(IPC.CONFIG_UPDATE, handler)
+    return () => ipcRenderer.removeListener(IPC.CONFIG_UPDATE, handler)
+  },
+
   onLogData: (cb: (entry: import('../shared/types').LogEntry) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, entry: import('../shared/types').LogEntry): void => cb(entry)
     ipcRenderer.on(IPC.LOG_DATA, handler)

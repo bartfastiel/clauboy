@@ -129,6 +129,7 @@ export default function AgentApp(): React.ReactElement {
 
   useEffect(() => {
     window.clauboy.getConfig().then(setConfig).catch(console.error)
+    const unsubConfig = window.clauboy.onConfigUpdate(setConfig)
     window.clauboy.getState().then((state: AppState) => {
       const found = state.issues.find((i) => i.issue.number === issueNumber)
       if (found) setIssueState(found)
@@ -138,7 +139,7 @@ export default function AgentApp(): React.ReactElement {
       const found = state.issues.find((i) => i.issue.number === issueNumber)
       if (found) setIssueState(found)
     })
-    return unsubscribe
+    return () => { unsubscribe(); unsubConfig() }
   }, [issueNumber])
 
   const handleButtonAction = (btn: Button): void => {
