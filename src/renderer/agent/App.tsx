@@ -190,17 +190,22 @@ export default function AgentApp(): React.ReactElement {
   React.useEffect(() => {
     const wv = webviewRef.current
     if (!wv) return
-    const handler = (): void => {
-      // Suppress scrollbars inside ttyd to prevent column-count flicker on resize
+    const onDomReady = (): void => {
       wv.insertCSS('::-webkit-scrollbar { display: none !important; } body, html { overflow: hidden !important; }').catch(() => {})
-      // Brief delay so the terminal can reflow to the correct size before we reveal it
+    }
+    const onDidStopLoading = (): void => {
+      // Wait for xterm.js to measure and reflow to the correct column count
       setTimeout(() => {
         setTerminalReady(true)
         wv.focus()
-      }, 300)
+      }, 200)
     }
-    wv.addEventListener('dom-ready', handler)
-    return () => { wv.removeEventListener('dom-ready', handler) }
+    wv.addEventListener('dom-ready', onDomReady)
+    wv.addEventListener('did-stop-loading', onDidStopLoading)
+    return () => {
+      wv.removeEventListener('dom-ready', onDomReady)
+      wv.removeEventListener('did-stop-loading', onDidStopLoading)
+    }
   }, [isRunning])
   const agentIsRunning = issueState?.agentIsRunning ?? false
 
