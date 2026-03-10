@@ -293,7 +293,7 @@ export default function AgentApp(): React.ReactElement {
               <div style={{
                 position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
                 alignItems: 'center', justifyContent: 'center', gap: '12px',
-                background: 'var(--bg)', zIndex: 1
+                background: 'var(--bg)', zIndex: 1, pointerEvents: 'none'
               }}>
                 <span style={{ fontSize: '28px', animation: 'spin 1s linear infinite' }}>⟳</span>
                 <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Connecting to terminal…</span>
@@ -302,7 +302,11 @@ export default function AgentApp(): React.ReactElement {
             <webview
               ref={webviewRef}
               src={`http://localhost:${issueState.terminalPort ?? (37680 + issueNumber)}`}
-              style={{ width: '100%', height: '100%' }}
+              style={{
+                width: '100%', height: '100%',
+                opacity: terminalReady ? 1 : 0,
+                transition: terminalReady ? 'opacity 0.15s ease' : 'none'
+              }}
             />
           </div>
         </>
