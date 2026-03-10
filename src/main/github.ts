@@ -16,15 +16,22 @@ export function initGitHub(config: Config): void {
   currentConfig = config
   octokit = new Octokit({ auth: config.github.token })
 
-  if (config.github.appId && config.github.installationId && config.github.privateKey) {
+  const hasApp = !!(config.github.appId && config.github.installationId && config.github.privateKey)
+  console.log(`[github] initGitHub: hasApp=${hasApp} appId=${config.github.appId ? 'set' : 'missing'} installationId=${config.github.installationId ? 'set' : 'missing'} privateKey=${config.github.privateKey ? 'set(' + config.github.privateKey.length + ' chars)' : 'missing'}`)
+
+  if (hasApp) {
     appOctokit = new Octokit({
       authStrategy: createAppAuth,
       auth: {
         appId: config.github.appId,
         privateKey: config.github.privateKey,
-        installationId: parseInt(config.github.installationId, 10)
+        installationId: parseInt(config.github.installationId!, 10)
       }
     })
+    console.log('[github] appOctokit initialized — comments will post as bot')
+  } else {
+    appOctokit = null
+    console.log('[github] appOctokit NOT initialized — comments will post as user')
   }
 }
 

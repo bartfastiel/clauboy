@@ -14,11 +14,15 @@ if [ ! -f /home/agent/.claude.json ]; then
     fi
 fi
 
+# Configure git credential helper so the PAT is used for git push/pull
+# but is NOT visible in the remote URL (prevents Claude Code from extracting it)
+GIT_TOKEN="${GITHUB_PAT:-$GH_TOKEN}"
+git config --global credential.helper "!f() { echo username=x-access-token; echo password=${GIT_TOKEN}; }; f"
+
 # Clone repo into /workspace if empty
 if [ -z "$(ls -A /workspace 2>/dev/null)" ] && [ -n "$GITHUB_OWNER" ] && [ -n "$GITHUB_REPO" ]; then
     echo "[clauboy] Cloning ${GITHUB_OWNER}/${GITHUB_REPO}..."
-    GIT_TOKEN="${GITHUB_PAT:-$GH_TOKEN}"
-    git clone "https://x-access-token:${GIT_TOKEN}@github.com/${GITHUB_OWNER}/${GITHUB_REPO}.git" /workspace
+    git clone "https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}.git" /workspace
     echo "[clauboy] Clone complete"
 fi
 
