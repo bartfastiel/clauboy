@@ -191,13 +191,20 @@ export default function AgentApp(): React.ReactElement {
     const wv = webviewRef.current
     if (!wv) return
     const onDomReady = (): void => {
-      wv.insertCSS('::-webkit-scrollbar { display: none !important; } body, html { overflow: hidden !important; }').catch(() => {})
+      // Hide content inside the webview while xterm.js initializes and resizes
+      wv.insertCSS(`
+        ::-webkit-scrollbar { display: none !important; }
+        body, html { overflow: hidden !important; }
+        body { opacity: 0 !important; }
+      `).catch(() => {})
     }
     const onDidStopLoading = (): void => {
-      // Wait for xterm.js to measure and reflow to the correct column count
-      setTimeout(() => setTerminalReady(true), 200)
-      // Focus separately after the opacity transition completes to avoid triggering a resize during reveal
-      setTimeout(() => wv.focus(), 500)
+      // Reveal the terminal content inside the webview after xterm.js has settled
+      setTimeout(() => {
+        wv.executeJavaScript(`document.body.style.opacity = '1'`).catch(() => {})
+        setTerminalReady(true)
+      }, 400)
+      setTimeout(() => wv.focus(), 700)
     }
     wv.addEventListener('dom-ready', onDomReady)
     wv.addEventListener('did-stop-loading', onDidStopLoading)
@@ -306,11 +313,7 @@ export default function AgentApp(): React.ReactElement {
             <webview
               ref={webviewRef}
               src={`http://localhost:${issueState.terminalPort ?? (37680 + issueNumber)}`}
-              style={{
-                width: '100%', height: '100%',
-                opacity: terminalReady ? 1 : 0,
-                transition: terminalReady ? 'opacity 0.15s ease' : 'none'
-              }}
+              style={{ width: '100%', height: '100%' }}
             />
           </div>
         </>

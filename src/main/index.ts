@@ -13,6 +13,12 @@ import { registerIpcHandlers } from './ipc-handlers'
 import { IssueState } from '../shared/types'
 import { logger } from './logger'
 
+// Suppress EPIPE errors from broken pipes (e.g. spawned processes, dev server restarts)
+process.on('uncaughtException', (err) => {
+  if (err && 'code' in err && (err as NodeJS.ErrnoException).code === 'EPIPE') return
+  console.error('Uncaught exception:', err)
+})
+
 async function startupSync(): Promise<void> {
   try {
     logger.info('Startup sync: fetching issues and Docker containers...')
