@@ -234,6 +234,39 @@ export default function OnboardingApp(): React.ReactElement {
   const [dockerStatus, setDockerStatus] = useState<'idle' | 'checking' | 'pulling' | 'done' | 'error'>('idle')
   const [buildLogs, setBuildLogs] = useState<string[]>([])
 
+  // Track whether user has passed through bot step (skipped or completed)
+  const [botPassed, setBotPassed] = useState(false)
+
+  // ── Validity computation (recalculated every render) ──
+  const tokenValid = githubValidation === 'ok'
+  const repoValid = tokenValid && !!config.github.owner && !!config.github.repo
+  const botDone = repoValid && botPassed
+  const cloneDone = botDone && cloneStatus === 'done'
+
+  // maxReachable: highest 0-based tab index the user can navigate to
+  let maxReachable = 0
+  if (tokenValid) maxReachable = 1
+  if (repoValid) maxReachable = 2
+  if (botDone) maxReachable = 3
+  if (cloneDone) maxReachable = 4
+
+  // If user is on a step that's no longer valid, push them back
+  useEffect(() => {
+    const maxStep = (maxReachable + 1) as Step
+    if (step > maxStep) setStep(maxStep)
+  }, [maxReachable])
+
+  // ── Navigation helper ──
+  const goToStep = (s: Step): void => {
+    setError('')
+    setStep(s)
+  }
+
+  const advancePastBot = (): void => {
+    setBotPassed(true)
+    goToStep(4)
+  }
+
   // Load persisted config on mount
   useEffect(() => {
     window.clauboy.getConfig().then((saved) => {
@@ -262,7 +295,7 @@ export default function OnboardingApp(): React.ReactElement {
     window.clauboy.saveConfig(config).catch(() => {/* ignore */})
   }, [config])
 
-  // Auto-clone when entering step 4
+  // Auto-clone when entering step 4 (only if not already done)
   useEffect(() => {
     if (step !== 4 || cloneStatus !== 'idle') return
     setCloneStatus('running')
@@ -271,6 +304,11 @@ export default function OnboardingApp(): React.ReactElement {
       .then(() => { setCloneStatus('done'); setStep(5) })
       .catch((err: Error) => { setCloneStatus('error'); setError(String(err)) })
   }, [step])
+
+  // Auto-advance past clone step if already done
+  useEffect(() => {
+    if (step === 4 && cloneStatus === 'done') setStep(5)
+  }, [step, cloneStatus])
 
   // Auto-check docker then auto-pull when entering step 5
   useEffect(() => {
@@ -341,14 +379,13 @@ export default function OnboardingApp(): React.ReactElement {
       setAppWaitingInstall(true)
       // Open install page and poll for installation ID
       await window.clauboy.openExternal(creds.installUrl)
-      // Poll for installation — check both org and user in case user installs on different account
       for (let i = 0; i < 60; i++) {
         await new Promise((r) => setTimeout(r, 3000))
         const id = await window.clauboy.getInstallationId(creds.appId, creds.privateKey, config.github.owner)
         if (id) {
           setConfig((c) => ({ ...c, github: { ...c.github, installationId: id } }))
           setAppWaitingInstall(false)
-          setStep(4)
+          advancePastBot()
           return
         }
       }
@@ -365,12 +402,11 @@ export default function OnboardingApp(): React.ReactElement {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Step tabs – only past and current step are reachable */}
       <StepTabs
         steps={STEP_TITLES}
         current={step - 1}
-        maxReachable={step - 1}
-        onSelect={(i) => { setError(''); setStep((i + 1) as Step) }}
+        maxReachable={maxReachable}
+        onSelect={(i) => goToStep((i + 1) as Step)}
       />
 
       {/* Content */}
@@ -465,8 +501,8 @@ export default function OnboardingApp(): React.ReactElement {
             appInstallUrl={appInstallUrl}
             error={error}
             onCreateApp={(appOwner) => void handleCreateApp(appOwner)}
-            onNext={() => setStep(4)}
-            onSkip={() => setStep(4)}
+            onNext={advancePastBot}
+            onSkip={advancePastBot}
           />
         )}
 
@@ -535,7 +571,7 @@ export default function OnboardingApp(): React.ReactElement {
       {/* Navigation */}
       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 24px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
         {step > 1 && step <= 3 ? (
-          <button onClick={() => { setError(''); setStep((s) => (s > 1 ? ((s - 1) as Step) : s)) }}>
+          <button onClick={() => goToStep((step - 1) as Step)}>
             ← Back
           </button>
         ) : (
@@ -543,20 +579,12 @@ export default function OnboardingApp(): React.ReactElement {
         )}
 
         {step === 1 && (
-          <button
-            className="primary"
-            disabled={githubValidation !== 'ok'}
-            onClick={() => setStep(2)}
-          >
+          <button className="primary" disabled={!tokenValid} onClick={() => goToStep(2)}>
             Next →
           </button>
         )}
         {step === 2 && (
-          <button
-            className="primary"
-            disabled={!config.github.owner || !config.github.repo}
-            onClick={() => { setError(''); setStep(3) }}
-          >
+          <button className="primary" disabled={!repoValid} onClick={() => goToStep(3)}>
             Next →
           </button>
         )}
