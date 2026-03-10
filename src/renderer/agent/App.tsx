@@ -191,11 +191,13 @@ export default function AgentApp(): React.ReactElement {
     const wv = webviewRef.current
     if (!wv) return
     const handler = (): void => {
-      setTerminalReady(true)
       // Suppress scrollbars inside ttyd to prevent column-count flicker on resize
       wv.insertCSS('::-webkit-scrollbar { display: none !important; } body, html { overflow: hidden !important; }').catch(() => {})
-      // Auto-focus so the first keystroke reaches the terminal without an extra click
-      wv.focus()
+      // Brief delay so the terminal can reflow to the correct size before we reveal it
+      setTimeout(() => {
+        setTerminalReady(true)
+        wv.focus()
+      }, 300)
     }
     wv.addEventListener('dom-ready', handler)
     return () => { wv.removeEventListener('dom-ready', handler) }
