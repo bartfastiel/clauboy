@@ -116,6 +116,53 @@ function ButtonBar({
   )
 }
 
+function PromptInput({ issueNumber }: { issueNumber: number }): React.ReactElement {
+  const [text, setText] = useState('')
+  const [sending, setSending] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const handleSend = (): void => {
+    const trimmed = text.trim()
+    if (!trimmed || sending) return
+    setSending(true)
+    window.clauboy.injectPrompt(issueNumber, trimmed)
+      .then(() => setText(''))
+      .catch(console.error)
+      .finally(() => setSending(false))
+  }
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: '6px',
+      padding: '6px 12px', borderTop: '1px solid var(--border)',
+      background: 'var(--bg-secondary)'
+    }}>
+      <input
+        ref={inputRef}
+        type="text"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') handleSend() }}
+        placeholder="Send to terminal…"
+        disabled={sending}
+        style={{
+          flex: 1, fontSize: '12px', padding: '5px 8px',
+          background: 'var(--bg)', border: '1px solid var(--border)',
+          borderRadius: 'var(--radius)', color: 'var(--text)',
+          outline: 'none'
+        }}
+      />
+      <button
+        onClick={handleSend}
+        disabled={!text.trim() || sending}
+        style={{ fontSize: '12px', padding: '4px 10px', opacity: text.trim() ? 1 : 0.4 }}
+      >
+        Send
+      </button>
+    </div>
+  )
+}
+
 export default function AgentApp(): React.ReactElement {
   const [issueNumber] = useState(() => {
     const params = new URLSearchParams(window.location.search)
@@ -316,6 +363,7 @@ export default function AgentApp(): React.ReactElement {
               style={{ width: '100%', height: '100%' }}
             />
           </div>
+          <PromptInput issueNumber={issueNumber} />
         </>
       ) : issueState.containerStatus === 'error' ? (
         <div style={{
