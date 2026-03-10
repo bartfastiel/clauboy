@@ -141,12 +141,16 @@ label {
 .badge {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   padding: 2px 8px;
   border-radius: 10px;
   font-size: 11px;
   font-weight: 600;
   line-height: 1.4;
+  min-width: 68px;
+  text-align: center;
 }
+
 
 .badge-starting {
   background: rgba(74, 158, 255, 0.15);

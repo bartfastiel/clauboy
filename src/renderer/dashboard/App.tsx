@@ -8,14 +8,16 @@ type RowState =
   | { kind: 'busy'; elapsed: number | null; capturedAt: string | null }
   | { kind: 'waiting'; elapsed: number | null; capturedAt: string | null }
   | { kind: 'failed'; detail: string }
-  | { kind: 'colleague'; login: string }
+  | { kind: 'colleague'; login: string; labels: string[] }
   | { kind: 'startable' }
 
 function getRowState(issueState: IssueState | null, trustedUser: string): RowState {
   if (!issueState) return { kind: 'startable' }
 
   const isColleague = !!issueState.labeledBy && issueState.labeledBy !== trustedUser
-  if (isColleague) return { kind: 'colleague', login: issueState.labeledBy! }
+  if (isColleague) {
+    return { kind: 'colleague', login: issueState.labeledBy!, labels: issueState.clauboyLabels }
+  }
 
   if (issueState.containerStatus === 'error') {
     return { kind: 'failed', detail: issueState.errorMessage ?? 'Unknown error' }
@@ -56,14 +58,14 @@ function StateBadge({ state, onRetry, onStart, starting }: {
       return <span className="badge badge-starting" title={state.detail}>Starting</span>
     case 'busy':
       return (
-        <span className="badge badge-busy" title="Agent is working — no action needed">
-          Busy{state.elapsed !== null && <span style={{ marginLeft: '4px', opacity: 0.7, display: 'inline-block', minWidth: '48px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 400 }}>{formatElapsed(state.elapsed)}</span>}
+        <span className="badge badge-busy" title={`Agent is working — no action needed${state.elapsed !== null ? `\nElapsed: ${formatElapsed(state.elapsed)}` : ''}`}>
+          Busy
         </span>
       )
     case 'waiting':
       return (
-        <span className="badge badge-waiting" title="Agent needs your input">
-          Waiting{state.elapsed !== null && <span style={{ marginLeft: '4px', opacity: 0.7, display: 'inline-block', minWidth: '48px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 400 }}>{formatElapsed(state.elapsed)}</span>}
+        <span className="badge badge-waiting" title={`Agent needs your input${state.elapsed !== null ? `\nWaiting: ${formatElapsed(state.elapsed)}` : ''}`}>
+          Waiting
         </span>
       )
     case 'failed':
@@ -79,8 +81,13 @@ function StateBadge({ state, onRetry, onStart, starting }: {
           )}
         </span>
       )
-    case 'colleague':
-      return <span className="badge badge-colleague" title={`Managed by ${state.login}`}>{state.login}</span>
+    case 'colleague': {
+      const clauboyStatus = state.labels.includes('clauboy:running') ? 'running'
+        : state.labels.includes('clauboy:done') ? 'done'
+        : state.labels.includes('clauboy:error') ? 'error'
+        : 'queued'
+      return <span className="badge badge-colleague" title={`Managed by ${state.login} (${clauboyStatus})`}>{state.login}</span>
+    }
     case 'startable':
       return (
         <button
@@ -178,7 +185,7 @@ export default function DashboardApp(): React.ReactElement {
   const [allLoading, setAllLoading] = useState(false)
   const [startingIssue, setStartingIssue] = useState<number | null>(null)
   const [filter, setFilter] = useState('')
-  const [sortBy, setSortBy] = useState<'updated' | 'number' | 'activity'>('activity')
+  const [sortBy, setSortBy] = useState<'updated' | 'number' | 'activity'>('number')
   const { t } = useI18n()
 
   useEffect(() => {
@@ -272,6 +279,10 @@ export default function DashboardApp(): React.ReactElement {
   const otherIssues = (allIssues ?? [])
     .filter((i) => !myIssueNumbers.has(i.number))
     .filter((i) => matchesFilter(i.title, i.number, filter))
+    .sort((a, b) => {
+      if (sortBy === 'number') return a.number - b.number
+      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    })
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
