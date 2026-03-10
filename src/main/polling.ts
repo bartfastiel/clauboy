@@ -55,7 +55,7 @@ function parseElapsedSeconds(text: string): number | null {
 async function refreshAgentActivity(): Promise<void> {
   const issues = appState.getState().issues.filter((i) => i.containerStatus === 'running')
   for (const issueState of issues) {
-    void refreshContainerToken(issueState.issue.number)
+    refreshContainerToken(issueState.issue.number).catch(() => {})
     try {
       const pane = await captureAgentPane(issueState.issue.number)
       // eslint-disable-next-line no-control-regex

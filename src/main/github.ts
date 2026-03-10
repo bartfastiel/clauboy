@@ -223,8 +223,7 @@ export async function getInstallationToken(): Promise<string | null> {
     const auth = createAppAuth({ appId, privateKey })
     const result = await auth({ type: 'installation', installationId: parseInt(installationId, 10) })
     return result.token
-  } catch (err) {
-    console.error('Failed to get installation token:', err)
+  } catch {
     return null
   }
 }
