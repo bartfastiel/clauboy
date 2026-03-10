@@ -2,15 +2,14 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Config, DEFAULT_BUTTONS } from '../../shared/types'
 import { StepTabs } from '../shared/StepTabs'
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6
+type Step = 1 | 2 | 3 | 4 | 5
 
 const STEP_TITLES = [
   'API Keys',
   'Repository',
   'GitHub Bot',
   'Cloning…',
-  'Docker Setup',
-  'Ready!'
+  'Docker Setup'
 ]
 
 const defaultConfig: Config = {
@@ -102,25 +101,29 @@ function BotSetupStep({
 
       {!appCreating && !appWaitingInstall && !botConfigured && (
         <div>
-          <div className="form-group">
-            <label>Create app on</label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
-              {isOrg && (
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
-                  <input type="radio" checked={appOwner === config.github.owner} onChange={() => setAppOwner(config.github.owner)} />
-                  <span><strong>{config.github.owner}</strong> (organization)</span>
-                </label>
-              )}
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
-                <input type="radio" checked={appOwner === userLogin} onChange={() => setAppOwner(userLogin)} />
-                <span><strong>{userLogin}</strong> (personal account)</span>
-              </label>
-              {isOrg && appOwner !== userLogin && (
-                <span style={{ color: 'var(--text-muted)', fontSize: '11px', marginLeft: '24px' }}>
-                  Requires org admin permissions on <strong>{config.github.owner}</strong>.
-                </span>
-              )}
+          <div style={{ marginBottom: '8px' }}>
+            <div style={{ color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 500, marginBottom: '8px' }}>Create app on</div>
+            {isOrg && (
+              <div
+                style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer', marginBottom: '6px' }}
+                onClick={() => setAppOwner(config.github.owner)}
+              >
+                <input type="radio" name="app-owner" checked={appOwner === config.github.owner} readOnly style={{ margin: 0, flexShrink: 0, width: '14px', height: '14px' }} />
+                <span style={{ whiteSpace: 'nowrap' }}><strong>{config.github.owner}</strong> (organization)</span>
+              </div>
+            )}
+            <div
+              style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer', marginBottom: '6px' }}
+              onClick={() => setAppOwner(userLogin)}
+            >
+              <input type="radio" name="app-owner" checked={appOwner === userLogin} readOnly style={{ margin: 0, flexShrink: 0, width: '14px', height: '14px' }} />
+              <span style={{ whiteSpace: 'nowrap' }}><strong>{userLogin}</strong> (personal account)</span>
             </div>
+            {isOrg && appOwner !== userLogin && (
+              <div style={{ color: 'var(--text-muted)', fontSize: '11px', marginLeft: '22px' }}>
+                Requires org admin permissions on <strong>{config.github.owner}</strong>.
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
@@ -284,7 +287,7 @@ export default function OnboardingApp(): React.ReactElement {
       return window.clauboy.pullImage(
         config.docker.imageName,
         (log) => setBuildLogs((prev) => [...prev, log])
-      ).then(() => { setDockerStatus('done'); setStep(6) })
+      ).then(() => { setDockerStatus('done'); void window.clauboy.completeOnboarding(config) })
     }).catch((err: Error) => { setDockerStatus('error'); setError(String(err)) })
   }, [step, dockerStatus])
 
@@ -356,12 +359,6 @@ export default function OnboardingApp(): React.ReactElement {
       setAppCreating(false)
       setAppWaitingInstall(false)
     }
-  }
-
-  const handleComplete = async (): Promise<void> => {
-    setError('')
-    try { await window.clauboy.completeOnboarding(config) }
-    catch (err) { setError(String(err)) }
   }
 
   const filteredRepos = repos.filter((r) => r.owner === config.github.owner)
@@ -524,20 +521,6 @@ export default function OnboardingApp(): React.ReactElement {
           </div>
         )}
 
-        {/* ── Step 6: Ready ── */}
-        {step === 6 && (
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🤠</div>
-            <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>Ready to ride!</div>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '13px' }}>
-              Add the <code style={{ background: 'var(--bg-tertiary)', padding: '1px 4px', borderRadius: '3px' }}>clauboy</code> label to any GitHub issue to start an agent.
-            </p>
-            <button className="primary" onClick={() => void handleComplete()}>
-              Open Dashboard
-            </button>
-          </div>
-        )}
-
         {error && (
           <div style={{
             marginTop: '16px', padding: '10px',
@@ -577,7 +560,7 @@ export default function OnboardingApp(): React.ReactElement {
             Next →
           </button>
         )}
-        {(step === 3 || step === 4 || step === 5 || step === 6) && <div />}
+        {(step === 3 || step === 4 || step === 5) && <div />}
       </div>
     </div>
   )
