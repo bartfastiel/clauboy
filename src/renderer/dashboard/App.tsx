@@ -148,9 +148,7 @@ function IssueRow({ issue, state, onClick, onRetry, onStart, starting }: {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '2px' }}>
           {issue.labels.map((label) => (
             <span key={label.name} style={{
-              fontSize: '10px', padding: '1px 6px', borderRadius: '10px',
-              background: `#${label.color}33`, color: `#${label.color}`,
-              border: `1px solid #${label.color}66`
+              fontSize: '10px', color: 'var(--text-muted)'
             }}>{label.name}</span>
           ))}
         </div>
