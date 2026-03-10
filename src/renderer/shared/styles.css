@@ -177,3 +177,9 @@ label {
   color: #4a9eff;
   border: 1px solid rgba(74, 158, 255, 0.3);
 }
+
+.badge-colleague {
+  background: rgba(160, 160, 160, 0.15);
+  color: #999;
+  border: 1px solid rgba(160, 160, 160, 0.3);
+}

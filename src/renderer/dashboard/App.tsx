@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { AppState, IssueState, ClauboyLabel, GitHubIssue } from '../../shared/types'
+import { AppState, Config, IssueState, ClauboyLabel, GitHubIssue } from '../../shared/types'
 import { VERSION } from '../../shared/version'
 import { useI18n } from '../shared/useI18n'
 
@@ -20,7 +20,7 @@ function formatElapsed(seconds: number): string {
   return `${s}s`
 }
 
-function IssueRow({ issueState, onClick }: { issueState: IssueState; onClick: () => void }): React.ReactElement {
+function IssueRow({ issueState, isColleague, onClick }: { issueState: IssueState; isColleague: boolean; onClick: () => void }): React.ReactElement {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     if (issueState.containerStatus !== 'running') return
@@ -32,22 +32,28 @@ function IssueRow({ issueState, onClick }: { issueState: IssueState; onClick: ()
     ? issueState.agentElapsedSeconds + Math.floor((now - new Date(issueState.agentElapsedCapturedAt).getTime()) / 1000)
     : null
 
-  const badge = getLabelBadge(issueState.clauboyLabels)
-  const containerIcon = issueState.containerStatus === 'running'
-    ? (issueState.agentActivity === 'waiting' ? '🟡' : issueState.agentActivity === 'working' ? '🟢' : '🟢')
-    : issueState.containerStatus === 'error' ? '🔴' : '⚪'
-  const activityTitle = issueState.containerStatus === 'running'
-    ? (issueState.agentActivity === 'waiting' ? 'Waiting for input' : issueState.agentActivity === 'working' ? 'Working…' : 'Running')
-    : issueState.containerStatus
+  const badge = isColleague
+    ? { text: `${issueState.labeledBy}`, className: 'badge badge-colleague' }
+    : getLabelBadge(issueState.clauboyLabels)
+  const containerIcon = isColleague ? '👤'
+    : issueState.containerStatus === 'running'
+      ? (issueState.agentActivity === 'waiting' ? '🟡' : issueState.agentActivity === 'working' ? '🟢' : '🟢')
+      : issueState.containerStatus === 'error' ? '🔴' : '⚪'
+  const activityTitle = isColleague ? `Managed by ${issueState.labeledBy}`
+    : issueState.containerStatus === 'running'
+      ? (issueState.agentActivity === 'waiting' ? 'Waiting for input' : issueState.agentActivity === 'working' ? 'Working…' : 'Running')
+      : issueState.containerStatus
 
   return (
     <div
-      onClick={onClick}
+      onClick={isColleague ? undefined : onClick}
       style={{
         padding: '12px 16px', borderBottom: '1px solid var(--border)',
-        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', transition: 'background 0.1s'
+        cursor: isColleague ? 'default' : 'pointer',
+        display: 'flex', alignItems: 'center', gap: '12px', transition: 'background 0.1s',
+        opacity: isColleague ? 0.6 : 1
       }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-secondary)')}
+      onMouseEnter={(e) => { if (!isColleague) e.currentTarget.style.background = 'var(--bg-secondary)' }}
       onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
     >
       <span style={{ fontSize: '12px' }} title={activityTitle}>{containerIcon}</span>
@@ -67,10 +73,10 @@ function IssueRow({ issueState, onClick }: { issueState: IssueState; onClick: ()
             }}>{label.name}</span>
           ))}
         </div>
-        {issueState.loadingStep && (
+        {!isColleague && issueState.loadingStep && (
           <div style={{ fontSize: '11px', color: 'var(--accent)' }}>{issueState.loadingStep}</div>
         )}
-        {!issueState.loadingStep && issueState.containerStatus === 'running' && issueState.agentActivity && (
+        {!isColleague && !issueState.loadingStep && issueState.containerStatus === 'running' && issueState.agentActivity && (
           <div style={{ fontSize: '11px', color: issueState.agentActivity === 'waiting' ? 'var(--text-muted)' : 'var(--accent)' }}>
             {issueState.agentActivity === 'waiting' ? '⏸ Waiting for input' : '⚙ Working…'}
             {elapsed !== null && <span style={{ marginLeft: '6px', opacity: 0.7 }}>{formatElapsed(elapsed)}</span>}
@@ -89,14 +95,15 @@ function IssueRow({ issueState, onClick }: { issueState: IssueState; onClick: ()
 }
 
 function AllIssueRow({
-  issue, isClauboy, onStart, starting,
+  issue, isClauboy, isColleague, colleagueLogin, onStart, starting,
 }: {
-  issue: GitHubIssue; isClauboy: boolean; onStart: () => void; starting: boolean
+  issue: GitHubIssue; isClauboy: boolean; isColleague: boolean; colleagueLogin: string | null; onStart: () => void; starting: boolean
 }): React.ReactElement {
   return (
     <div style={{
       padding: '10px 16px', borderBottom: '1px solid var(--border)',
       display: 'flex', alignItems: 'center', gap: '10px',
+      opacity: isColleague ? 0.6 : 1
     }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div>
@@ -121,11 +128,13 @@ function AllIssueRow({
         style={{ fontSize: '13px', flexShrink: 0 }}
         onClick={(e) => { e.stopPropagation(); window.clauboy.openExternal(issue.html_url).catch(console.error) }}
       >↗</button>
-      {isClauboy
-        ? <span className="badge badge-queued" style={{ fontSize: '10px' }}>Queued</span>
-        : <button style={{ fontSize: '11px', padding: '3px 10px', whiteSpace: 'nowrap' }} disabled={starting} onClick={(e) => { e.stopPropagation(); onStart() }}>
-            {starting ? '…' : '▶ Start'}
-          </button>
+      {isColleague
+        ? <span className="badge badge-colleague" style={{ fontSize: '10px' }}>{colleagueLogin}</span>
+        : isClauboy
+          ? <span className="badge badge-queued" style={{ fontSize: '10px' }}>Queued</span>
+          : <button style={{ fontSize: '11px', padding: '3px 10px', whiteSpace: 'nowrap' }} disabled={starting} onClick={(e) => { e.stopPropagation(); onStart() }}>
+              {starting ? '…' : '▶ Start'}
+            </button>
       }
     </div>
   )
@@ -139,6 +148,7 @@ function matchesFilter(title: string, number: number, filter: string): boolean {
 
 export default function DashboardApp(): React.ReactElement {
   const [appState, setAppState] = useState<AppState | null>(null)
+  const [config, setConfig] = useState<Config | null>(null)
   const [browseOpen, setBrowseOpen] = useState(false)
   const [allIssues, setAllIssues] = useState<GitHubIssue[] | null>(null)
   const [allLoading, setAllLoading] = useState(false)
@@ -148,8 +158,11 @@ export default function DashboardApp(): React.ReactElement {
   const { t } = useI18n()
 
   useEffect(() => {
+    window.clauboy.getConfig().then(setConfig).catch(console.error)
+    const unsubConfig = window.clauboy.onConfigUpdate(setConfig)
     window.clauboy.getState().then(setAppState).catch(console.error)
-    return window.clauboy.onStateUpdate(setAppState)
+    const unsubState = window.clauboy.onStateUpdate(setAppState)
+    return () => { unsubState(); unsubConfig() }
   }, [])
 
   useEffect(() => {
@@ -210,8 +223,12 @@ export default function DashboardApp(): React.ReactElement {
     return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)' }}>Loading...</div>
   }
 
+  const trustedUser = config?.github.trustedUser ?? ''
+  const isColleague = (s: IssueState): boolean => s.labeledBy !== null && s.labeledBy !== trustedUser
+
   const clauboyIssueNumbers = new Set(appState.issues.map((i) => i.issue.number))
   const statusOrder = (s: IssueState): number => {
+    if (isColleague(s)) return 5
     if (s.containerStatus === 'running') return 0
     if (s.clauboyLabels.includes('clauboy:error')) return 1
     if (s.clauboyLabels.includes('clauboy')) return 3
@@ -291,6 +308,7 @@ export default function DashboardApp(): React.ReactElement {
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {sortedIssues.map((issueState) => (
           <IssueRow key={issueState.issue.number} issueState={issueState}
+            isColleague={isColleague(issueState)}
             onClick={() => window.clauboy.openAgent(issueState.issue.number).catch(console.error)} />
         ))}
 
@@ -316,12 +334,18 @@ export default function DashboardApp(): React.ReactElement {
               </div>
             )}
 
-            {!allLoading && filteredAllIssues?.map((issue) => (
-              <AllIssueRow key={issue.number} issue={issue}
-                isClauboy={clauboyIssueNumbers.has(issue.number)}
-                onStart={() => void handleStartIssue(issue.number)}
-                starting={startingIssue === issue.number} />
-            ))}
+            {!allLoading && filteredAllIssues?.map((issue) => {
+              const tracked = appState.issues.find((i) => i.issue.number === issue.number)
+              const colleagueIssue = tracked ? isColleague(tracked) : false
+              return (
+                <AllIssueRow key={issue.number} issue={issue}
+                  isClauboy={clauboyIssueNumbers.has(issue.number)}
+                  isColleague={colleagueIssue}
+                  colleagueLogin={colleagueIssue ? tracked!.labeledBy : null}
+                  onStart={() => void handleStartIssue(issue.number)}
+                  starting={startingIssue === issue.number} />
+              )
+            })}
           </div>
         )}
       </div>

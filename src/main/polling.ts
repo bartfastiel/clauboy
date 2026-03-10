@@ -161,7 +161,8 @@ async function runPollTick(): Promise<void> {
         loadingStep: null,
         agentActivity: null,
         agentElapsedSeconds: null,
-        agentElapsedCapturedAt: null
+        agentElapsedCapturedAt: null,
+        labeledBy: null
       }
 
       // Update issue data
@@ -179,6 +180,19 @@ async function runPollTick(): Promise<void> {
         issueState.terminalPort = TERMINAL_PORT_BASE + issue.number
       }
 
+      // Determine who added the 'clauboy' label (cached — only fetch once per issue)
+      if (issueState.labeledBy === null && clauboyLabels.includes('clauboy')) {
+        logger.info(`Issue #${issue.number}: checking label events to determine who labeled it`)
+        const events = await getLabelEvents(issue.number)
+        const labelEvent = events
+          .filter((e) => e.event === 'labeled' && e.label?.name === 'clauboy')
+          .pop()
+        issueState.labeledBy = labelEvent?.actor?.login ?? 'unknown'
+        logger.info(`Issue #${issue.number}: labeled by "${issueState.labeledBy}"`)
+      }
+
+      const isMine = issueState.labeledBy === config.github.trustedUser
+
       // Check if we should start a container (trusted user added clauboy label)
       const shouldConsiderStart =
         clauboyLabels.includes('clauboy') &&
@@ -186,65 +200,50 @@ async function runPollTick(): Promise<void> {
         !clauboyLabels.includes('clauboy:done') &&
         (issueState.containerStatus === 'none' || issueState.containerStatus === 'stopped')
 
-      logger.debug(`Issue #${issue.number} shouldConsiderStart=${shouldConsiderStart} (containerStatus=${issueState.containerStatus})`)
+      logger.debug(`Issue #${issue.number} shouldConsiderStart=${shouldConsiderStart} isMine=${isMine} (containerStatus=${issueState.containerStatus})`)
 
-      if (shouldConsiderStart) {
-        logger.info(`Issue #${issue.number}: checking label events for trusted user "${config.github.trustedUser}"`)
-        const events = await getLabelEvents(issue.number)
-        logger.debug(`Issue #${issue.number}: got ${events.length} label event(s)`)
+      if (shouldConsiderStart && !isMine) {
+        logger.info(`Issue #${issue.number}: labeled by "${issueState.labeledBy}" (not trusted user "${config.github.trustedUser}") — skipping`)
+      } else if (shouldConsiderStart && isMine) {
+        logger.info(`Issue #${issue.number}: trusted user "${issueState.labeledBy}" — starting agent`)
 
-        const clauboyLabelEvent = events
-          .filter(
-            (e) =>
-              e.event === 'labeled' &&
-              e.label?.name === 'clauboy' &&
-              e.actor?.login === config.github.trustedUser
-          )
-          .pop()
-
-        if (!clauboyLabelEvent) {
-          logger.warn(`Issue #${issue.number}: no "clauboy" label event from trustedUser "${config.github.trustedUser}" found — not starting. All labelers: [${events.filter((e) => e.event === 'labeled' && e.label?.name === 'clauboy').map((e) => e.actor?.login).join(', ')}]`)
+        // Start the agent — show progress without pushing to issueStates twice
+        issueState.loadingStep = 'Starting container...'
+        const alreadyInState = appState.getState().issues.some((i) => i.issue.number === issue.number)
+        if (alreadyInState) {
+          appState.updateIssue(issue.number, issueState)
         } else {
-          logger.info(`Issue #${issue.number}: trusted user "${clauboyLabelEvent.actor?.login}" labeled at ${clauboyLabelEvent.created_at} — starting agent`)
+          appState.setState({ issues: [...appState.getState().issues, issueState] })
+        }
 
-          // Start the agent — show progress without pushing to issueStates twice
+        try {
+          const wsPath = path.join(
+            config.cloneDir ?? '',
+            `${config.github.owner}-${config.github.repo}`,
+            'workspaces',
+            `issue-${issue.number}`
+          )
+          fs.mkdirSync(wsPath, { recursive: true })
+          logger.info(`Issue #${issue.number}: workspace path="${wsPath}"`)
+          issueState.worktreePath = wsPath
           issueState.loadingStep = 'Starting container...'
-          const alreadyInState = appState.getState().issues.some((i) => i.issue.number === issue.number)
-          if (alreadyInState) {
-            appState.updateIssue(issue.number, issueState)
-          } else {
-            appState.setState({ issues: [...appState.getState().issues, issueState] })
-          }
+          appState.updateIssue(issue.number, issueState)
 
-          try {
-            const wsPath = path.join(
-              config.cloneDir ?? '',
-              `${config.github.owner}-${config.github.repo}`,
-              'workspaces',
-              `issue-${issue.number}`
-            )
-            fs.mkdirSync(wsPath, { recursive: true })
-            logger.info(`Issue #${issue.number}: workspace path="${wsPath}"`)
-            issueState.worktreePath = wsPath
-            issueState.loadingStep = 'Starting container...'
-            appState.updateIssue(issue.number, issueState)
-
-            logger.info(`Issue #${issue.number}: starting Docker container with workspace="${wsPath}" image="${config.docker.imageName}"`)
-            const containerId = await startContainer(issue.number, config, wsPath, issue.title)
-            logger.info(`Issue #${issue.number}: container started id=${containerId.slice(0, 12)}`)
-            issueState.containerId = containerId
-            issueState.containerStatus = 'running'
-            issueState.terminalPort = TERMINAL_PORT_BASE + issue.number
-            issueState.loadingStep = null
-            appState.updateIssue(issue.number, issueState)
-          } catch (err) {
-            const msg = err instanceof Error ? err.message : String(err)
-            logger.error(`Issue #${issue.number}: failed to start agent — ${msg}`)
-            issueState.containerStatus = 'error'
-            issueState.loadingStep = null
-            issueState.errorMessage = msg
-            appState.updateIssue(issue.number, issueState)
-          }
+          logger.info(`Issue #${issue.number}: starting Docker container with workspace="${wsPath}" image="${config.docker.imageName}"`)
+          const containerId = await startContainer(issue.number, config, wsPath, issue.title)
+          logger.info(`Issue #${issue.number}: container started id=${containerId.slice(0, 12)}`)
+          issueState.containerId = containerId
+          issueState.containerStatus = 'running'
+          issueState.terminalPort = TERMINAL_PORT_BASE + issue.number
+          issueState.loadingStep = null
+          appState.updateIssue(issue.number, issueState)
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err)
+          logger.error(`Issue #${issue.number}: failed to start agent — ${msg}`)
+          issueState.containerStatus = 'error'
+          issueState.loadingStep = null
+          issueState.errorMessage = msg
+          appState.updateIssue(issue.number, issueState)
         }
       }
 
