@@ -339,6 +339,19 @@ export async function captureAgentPane(issueNumber: number): Promise<string> {
   })
 }
 
+export async function getContainerLogs(issueNumber: number, tail: number = 100): Promise<string> {
+  return new Promise((resolve) => {
+    const proc = spawn('docker', [
+      'logs', '--tail', String(tail), `clauboy-issue-${issueNumber}`
+    ])
+    let out = ''
+    proc.stdout.on('data', (d: Buffer) => { out += d.toString() })
+    proc.stderr.on('data', (d: Buffer) => { out += d.toString() })
+    proc.on('close', () => resolve(out))
+    proc.on('error', () => resolve(''))
+  })
+}
+
 export function openAuthTerminal(issueNumber: number): void {
   const containerName = `clauboy-issue-${issueNumber}`
   const cmd = `docker exec -it ${containerName} claude auth login`

@@ -116,6 +116,62 @@ function ButtonBar({
   )
 }
 
+function ContainerLogs({ issueNumber, containerStatus }: { issueNumber: number; containerStatus: string }): React.ReactElement {
+  const [logs, setLogs] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    window.clauboy.getContainerLogs(issueNumber)
+      .then((text) => setLogs(text || null))
+      .catch(() => setLogs(null))
+      .finally(() => setLoading(false))
+  }, [issueNumber, containerStatus])
+
+  if (loading) {
+    return (
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
+        Fetching container logs…
+      </div>
+    )
+  }
+
+  if (!logs) {
+    return (
+      <div style={{
+        flex: 1, display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        gap: '8px', color: 'var(--text-secondary)'
+      }}>
+        <span>No container found for this issue.</span>
+        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+          Add the <code style={{ background: 'var(--bg-tertiary)', padding: '1px 4px', borderRadius: '3px' }}>clauboy</code> label to start an agent.
+        </span>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{
+      flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0
+    }}>
+      <div style={{
+        padding: '6px 12px', fontSize: '11px', color: 'var(--text-muted)',
+        borderBottom: '1px solid var(--border)', flexShrink: 0
+      }}>
+        Container logs (status: {containerStatus})
+      </div>
+      <div style={{
+        flex: 1, overflowY: 'auto', padding: '8px 12px',
+        fontFamily: 'monospace', fontSize: '11px', lineHeight: '1.5',
+        color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-all'
+      }}>
+        {logs}
+      </div>
+    </div>
+  )
+}
+
 function PromptInput({ issueNumber }: { issueNumber: number }): React.ReactElement {
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
@@ -366,39 +422,29 @@ export default function AgentApp(): React.ReactElement {
           <PromptInput issueNumber={issueNumber} />
         </>
       ) : issueState.containerStatus === 'error' ? (
-        <div style={{
-          flex: 1, display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '24px'
-        }}>
-          <span style={{ fontSize: '32px' }}>⚠️</span>
-          <span style={{ color: 'var(--accent-danger)', fontWeight: 600 }}>Failed to start agent</span>
-          {issueState.errorMessage && (
-            <div style={{
-              background: 'var(--bg-secondary)', border: '1px solid var(--border)',
-              borderRadius: 'var(--radius)', padding: '10px 14px',
-              fontFamily: 'monospace', fontSize: '12px', color: 'var(--text-secondary)',
-              maxWidth: '100%', wordBreak: 'break-word', whiteSpace: 'pre-wrap'
-            }}>
-              {issueState.errorMessage}
-            </div>
-          )}
-          <button
-            className="primary"
-            onClick={() => window.clauboy.retryAgent(issueNumber).catch(console.error)}
-          >
-            ↺ Retry
-          </button>
-        </div>
+        <>
+          <div style={{
+            padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '8px',
+            borderBottom: '1px solid var(--border)', flexShrink: 0
+          }}>
+            <span style={{ color: 'var(--accent-danger)', fontWeight: 600, fontSize: '13px' }}>Failed to start agent</span>
+            {issueState.errorMessage && (
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {issueState.errorMessage}
+              </span>
+            )}
+            <button
+              className="primary"
+              onClick={() => window.clauboy.retryAgent(issueNumber).catch(console.error)}
+              style={{ fontSize: '12px', padding: '4px 10px', flexShrink: 0 }}
+            >
+              ↺ Retry
+            </button>
+          </div>
+          <ContainerLogs issueNumber={issueNumber} containerStatus={issueState.containerStatus} />
+        </>
       ) : (
-        <div style={{
-          flex: 1, display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center',
-          gap: '12px', color: 'var(--text-secondary)'
-        }}>
-          <span style={{ fontSize: '32px' }}>💤</span>
-          <span>{t('container_not_running')}</span>
-          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Status: {issueState.containerStatus}</span>
-        </div>
+        <ContainerLogs issueNumber={issueNumber} containerStatus={issueState.containerStatus} />
       )}
     </div>
   )

@@ -20,7 +20,8 @@ import {
   stopContainer,
   getDockerfilePath,
   openAuthTerminal,
-  getTerminalPort
+  getTerminalPort,
+  getContainerLogs
 } from './docker'
 import { removeWorktree } from './worktree'
 import * as fs from 'fs'
@@ -257,6 +258,11 @@ export function registerIpcHandlers(): void {
   // Open auth terminal for claude auth login
   ipcMain.handle(IPC.AGENT_AUTH_TERMINAL, (_event, issueNumber: number) => {
     openAuthTerminal(issueNumber)
+  })
+
+  // Fetch docker container logs
+  ipcMain.handle(IPC.DOCKER_CONTAINER_LOGS, async (_event, issueNumber: number) => {
+    return getContainerLogs(issueNumber)
   })
 
   // Anthropic API key validation

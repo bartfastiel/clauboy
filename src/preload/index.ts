@@ -136,6 +136,9 @@ const clauboyAPI = {
     return () => ipcRenderer.removeListener(IPC.CONFIG_UPDATE, handler)
   },
 
+  getContainerLogs: (issueNumber: number): Promise<string> =>
+    ipcRenderer.invoke(IPC.DOCKER_CONTAINER_LOGS, issueNumber),
+
   onLogData: (cb: (entry: import('../shared/types').LogEntry) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, entry: import('../shared/types').LogEntry): void => cb(entry)
     ipcRenderer.on(IPC.LOG_DATA, handler)
