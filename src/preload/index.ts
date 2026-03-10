@@ -91,9 +91,6 @@ const clauboyAPI = {
   listRepos: (token: string): Promise<Array<{ owner: string; name: string }>> =>
     ipcRenderer.invoke(IPC.GITHUB_LIST_REPOS, token),
 
-  validateAnthropicKey: (apiKey: string): Promise<boolean> =>
-    ipcRenderer.invoke(IPC.ANTHROPIC_VALIDATE_KEY, apiKey),
-
   listAllIssues: (): Promise<import('../shared/types').GitHubIssue[]> =>
     ipcRenderer.invoke(IPC.GITHUB_LIST_ALL_ISSUES),
 

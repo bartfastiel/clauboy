@@ -33,7 +33,6 @@ const defaultConfig: Config = {
   buttons: DEFAULT_BUTTONS,
   language: 'en',
   editorCommand: 'code',
-  claudeApiKey: '',
   cloneDir: ''
 }
 
@@ -183,7 +182,6 @@ export default function OnboardingApp(): React.ReactElement {
 
   // Step 1 validation
   const [githubValidation, setGithubValidation] = useState<ValidationState>('idle')
-  const [anthropicValidation, setAnthropicValidation] = useState<ValidationState>('idle')
   const [githubUser, setGithubUser] = useState<{ login: string; name: string | null } | null>(null)
 
   // Step 2 – GitHub App creation
@@ -217,7 +215,6 @@ export default function OnboardingApp(): React.ReactElement {
           installationId: saved.github.installationId || c.github.installationId,
           privateKey: saved.github.privateKey || c.github.privateKey,
         },
-        claudeApiKey: saved.claudeApiKey || c.claudeApiKey,
         editorCommand: saved.editorCommand || c.editorCommand,
         docker: { ...c.docker, ...saved.docker },
       }))
@@ -287,17 +284,6 @@ export default function OnboardingApp(): React.ReactElement {
       return
     }
 
-    if (config.claudeApiKey) {
-      setAnthropicValidation('loading')
-      try {
-        await window.clauboy.validateAnthropicKey(config.claudeApiKey)
-        setAnthropicValidation('ok')
-      } catch (err) {
-        setAnthropicValidation('error')
-        setError(`Anthropic API key invalid: ${String(err)}`)
-        return
-      }
-    }
     setStep(2)
   }
 
@@ -382,27 +368,6 @@ export default function OnboardingApp(): React.ReactElement {
                 onChange={(e) => { updateGithub('token', e.target.value); setGithubValidation('idle'); setGithubUser(null) }}
                 placeholder="ghp_…"
               />
-            </div>
-            <div className="form-group">
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                Anthropic API Key
-                <ValidationIcon state={anthropicValidation} />
-              </label>
-              <input
-                type="password"
-                value={config.claudeApiKey ?? ''}
-                onChange={(e) => { setConfig((c) => ({ ...c, claudeApiKey: e.target.value })); setAnthropicValidation('idle') }}
-                placeholder="sk-ant-…"
-              />
-              <button
-                onClick={() => window.clauboy.openExternal('https://console.anthropic.com/settings/keys').catch(console.error)}
-                style={{ marginTop: '6px', fontSize: '11px' }}
-              >
-                🔗 Open Anthropic Console
-              </button>
-              <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                Optional if you authenticate via 🔑 Auth in the agent window.
-              </p>
             </div>
           </div>
         )}

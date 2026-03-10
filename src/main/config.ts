@@ -58,7 +58,6 @@ const DEFAULT_CONFIG: Config = {
   buttons: DEFAULT_BUTTONS,
   language: 'en',
   editorCommand: 'code',
-  claudeApiKey: '',
   cloneDir: path.join(app.getPath('home'), '.clauboy', 'repos'),
   setupComplete: false
 }
@@ -101,8 +100,6 @@ interface RawConfig {
   buttons?: Config['buttons']
   language?: Config['language']
   editorCommand?: string
-  claudeApiKey?: string
-  _claudeApiKeyEncrypted?: boolean
   cloneDir?: string
   setupComplete?: boolean
 }
@@ -137,9 +134,6 @@ export function loadConfig(): Config {
         ...DEFAULT_CONFIG.docker,
         ...(raw.docker ?? {})
       },
-      claudeApiKey: raw._claudeApiKeyEncrypted
-        ? decryptToken(raw.claudeApiKey ?? '')
-        : (raw.claudeApiKey ?? ''),
       // Resolve cloneDir to absolute path if it's relative
       cloneDir: raw.cloneDir
         ? (path.isAbsolute(raw.cloneDir) ? raw.cloneDir : path.resolve(raw.cloneDir))
@@ -187,11 +181,6 @@ export function saveConfig(config: Config): void {
       privateKey: encryptToken(config.github.privateKey),
       _privateKeyEncrypted: safeStorage.isEncryptionAvailable()
     }
-  }
-
-  if (config.claudeApiKey) {
-    toSave.claudeApiKey = encryptToken(config.claudeApiKey)
-    toSave._claudeApiKeyEncrypted = safeStorage.isEncryptionAvailable()
   }
 
   fs.writeFileSync(configPath, yaml.dump(toSave), 'utf-8')

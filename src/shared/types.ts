@@ -113,7 +113,6 @@ export interface Config {
   buttons: Button[]
   language: 'en' | 'de'
   editorCommand: string
-  claudeApiKey?: string
   cloneDir?: string
   setupComplete?: boolean
 }
@@ -147,7 +146,6 @@ export const IPC = {
   GITHUB_LIST_ALL_ISSUES: 'github:list-all-issues',
   GITHUB_LABEL_ISSUE: 'github:label-issue',
   AGENT_RETRY: 'agent:retry',
-  ANTHROPIC_VALIDATE_KEY: 'anthropic:validate-key',
   SYSTEM_OPEN_EXTERNAL: 'system:open-external',
   SYSTEM_OPEN_IN_EDITOR: 'system:open-in-editor',
   SYSTEM_CONFIRM: 'system:confirm',

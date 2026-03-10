@@ -265,15 +265,6 @@ export function registerIpcHandlers(): void {
     return getContainerLogs(issueNumber)
   })
 
-  // Anthropic API key validation
-  ipcMain.handle(IPC.ANTHROPIC_VALIDATE_KEY, async (_event, apiKey: string) => {
-    const response = await fetch('https://api.anthropic.com/v1/models', {
-      headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }
-    })
-    if (!response.ok) throw new Error(`Invalid Anthropic API key (HTTP ${response.status})`)
-    return true
-  })
-
   // Clean up an orphan worktree (stop any stray container + remove filesystem path)
   ipcMain.handle(IPC.AGENT_CLEANUP_ORPHAN, async (_event, worktreePath: string) => {
     // Extract issue number from path if possible and stop a stray container

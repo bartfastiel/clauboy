@@ -198,7 +198,6 @@ export default function SettingsApp(): React.ReactElement {
   const [step, setStep] = useState(0)
   const [ghValidation, setGhValidation] = useState<ValidationState>('idle')
   const [ghUser, setGhUser] = useState<string | null>(null)
-  const [anthropicValidation, setAnthropicValidation] = useState<ValidationState>('idle')
 
   useEffect(() => {
     window.clauboy.getConfig().then((c) => { setConfig(c); setSavedConfig(c) }).catch(console.error)
@@ -228,17 +227,6 @@ export default function SettingsApp(): React.ReactElement {
       setGhUser(user.login)
     } catch {
       setGhValidation('error')
-    }
-  }
-
-  const handleValidateAnthropic = async (): Promise<void> => {
-    if (!config?.claudeApiKey) return
-    setAnthropicValidation('loading')
-    try {
-      await window.clauboy.validateAnthropicKey(config.claudeApiKey)
-      setAnthropicValidation('ok')
-    } catch {
-      setAnthropicValidation('error')
     }
   }
 
@@ -305,23 +293,6 @@ export default function SettingsApp(): React.ReactElement {
               <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
                 <HelpLink url="https://github.com/settings/tokens/new?description=Clauboy&scopes=repo,issues" label="Create GitHub Token" />
                 <button onClick={() => void handleValidateGh()} style={{ fontSize: '11px', marginTop: '4px' }}>Validate</button>
-              </div>
-            </div>
-            <div className="form-group">
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                Anthropic API Key
-                <ValidationIcon state={anthropicValidation} />
-              </label>
-              <input
-                type="password"
-                value={config.claudeApiKey ?? ''}
-                onChange={(e) => { setConfig((c) => c ? { ...c, claudeApiKey: e.target.value } : c); setAnthropicValidation('idle') }}
-                placeholder="sk-ant-…"
-                onBlur={() => { if (config.claudeApiKey) void handleValidateAnthropic() }}
-              />
-              <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
-                <HelpLink url="https://console.anthropic.com/settings/keys" label="Open Anthropic Console" />
-                <button onClick={() => void handleValidateAnthropic()} style={{ fontSize: '11px', marginTop: '4px' }}>Validate</button>
               </div>
             </div>
           </>
