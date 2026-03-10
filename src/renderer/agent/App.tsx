@@ -119,14 +119,23 @@ function ButtonBar({
 function ContainerLogs({ issueNumber, containerStatus }: { issueNumber: number; containerStatus: string }): React.ReactElement {
   const [logs, setLogs] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const logEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    setLoading(true)
-    window.clauboy.getContainerLogs(issueNumber)
-      .then((text) => setLogs(text || null))
-      .catch(() => setLogs(null))
-      .finally(() => setLoading(false))
+    let cancelled = false
+    const fetchLogs = (): void => {
+      window.clauboy.getContainerLogs(issueNumber)
+        .then((text) => { if (!cancelled) { setLogs(text || null); setLoading(false) } })
+        .catch(() => { if (!cancelled) { setLogs(null); setLoading(false) } })
+    }
+    fetchLogs()
+    const interval = setInterval(fetchLogs, 3000)
+    return () => { cancelled = true; clearInterval(interval) }
   }, [issueNumber, containerStatus])
+
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView()
+  }, [logs])
 
   if (loading) {
     return (
@@ -167,6 +176,7 @@ function ContainerLogs({ issueNumber, containerStatus }: { issueNumber: number; 
         color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-all'
       }}>
         {logs}
+        <div ref={logEndRef} />
       </div>
     </div>
   )
@@ -227,6 +237,7 @@ export default function AgentApp(): React.ReactElement {
   const [issueState, setIssueState] = useState<IssueState | null>(null)
   const [config, setConfig] = useState<Config | null>(null)
   const [terminalReady, setTerminalReady] = useState(false)
+  const [webviewFailed, setWebviewFailed] = useState(false)
   const webviewRef = useRef<Electron.WebviewTag>(null)
   const { t } = useI18n()
 
@@ -285,7 +296,10 @@ export default function AgentApp(): React.ReactElement {
 
   // Reset terminal loading overlay when container transitions to running
   React.useEffect(() => {
-    if (isRunning && !prevRunning.current) setTerminalReady(false)
+    if (isRunning && !prevRunning.current) {
+      setTerminalReady(false)
+      setWebviewFailed(false)
+    }
     prevRunning.current = isRunning
   }, [isRunning])
 
@@ -309,13 +323,36 @@ export default function AgentApp(): React.ReactElement {
       }, 400)
       setTimeout(() => wv.focus(), 700)
     }
+    const onDidFailLoad = (_e: Event): void => {
+      setWebviewFailed(true)
+      setTerminalReady(true) // hide the spinner overlay
+    }
     wv.addEventListener('dom-ready', onDomReady)
     wv.addEventListener('did-stop-loading', onDidStopLoading)
+    wv.addEventListener('did-fail-load', onDidFailLoad)
     return () => {
       wv.removeEventListener('dom-ready', onDomReady)
       wv.removeEventListener('did-stop-loading', onDidStopLoading)
+      wv.removeEventListener('did-fail-load', onDidFailLoad)
     }
   }, [isRunning])
+
+  // Timeout: if terminal doesn't load within 8s, show container logs and auto-retry
+  React.useEffect(() => {
+    if (!isRunning || terminalReady || webviewFailed) return
+    const timer = setTimeout(() => setWebviewFailed(true), 8000)
+    return () => clearTimeout(timer)
+  }, [isRunning, terminalReady, webviewFailed])
+
+  // Auto-retry loading the terminal every 5s while showing container logs
+  React.useEffect(() => {
+    if (!isRunning || !webviewFailed) return
+    const interval = setInterval(() => {
+      setWebviewFailed(false)
+      setTerminalReady(false)
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [isRunning, webviewFailed])
   const agentIsRunning = issueState?.agentIsRunning ?? false
 
   if (!issueState || !config) {
@@ -400,7 +437,7 @@ export default function AgentApp(): React.ReactElement {
             })}
           </div>
         </div>
-      ) : isRunning ? (
+      ) : isRunning && !webviewFailed ? (
         <>
           <div style={{ flex: 1, position: 'relative', minHeight: 0, overflow: 'hidden' }}>
             <div style={{
@@ -419,6 +456,29 @@ export default function AgentApp(): React.ReactElement {
               style={{ width: '100%', height: '100%' }}
             />
           </div>
+          <PromptInput issueNumber={issueNumber} />
+        </>
+      ) : isRunning && webviewFailed ? (
+        <>
+          <div style={{
+            padding: '8px 12px', fontSize: '11px', color: 'var(--text-muted)',
+            borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0
+          }}>
+            <span>Terminal not reachable at port {issueState.terminalPort ?? (37680 + issueNumber)}</span>
+            <button
+              onClick={() => { setWebviewFailed(false); setTerminalReady(false) }}
+              style={{ fontSize: '11px', padding: '2px 8px' }}
+            >
+              Retry
+            </button>
+            <button
+              onClick={() => window.clauboy.openExternal(`http://localhost:${issueState.terminalPort ?? (37680 + issueNumber)}`).catch(console.error)}
+              style={{ fontSize: '11px', padding: '2px 8px' }}
+            >
+              Open in browser
+            </button>
+          </div>
+          <ContainerLogs issueNumber={issueNumber} containerStatus={issueState.containerStatus} />
           <PromptInput issueNumber={issueNumber} />
         </>
       ) : issueState.containerStatus === 'error' ? (
