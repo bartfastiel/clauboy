@@ -195,13 +195,13 @@ export default function AgentApp(): React.ReactElement {
       wv.insertCSS(`
         ::-webkit-scrollbar { display: none !important; }
         body, html { overflow: hidden !important; }
-        body { opacity: 0 !important; }
+        body { opacity: 0; }
       `).catch(() => {})
     }
     const onDidStopLoading = (): void => {
       // Reveal the terminal content inside the webview after xterm.js has settled
       setTimeout(() => {
-        wv.executeJavaScript(`document.body.style.opacity = '1'`).catch(() => {})
+        wv.insertCSS('body { opacity: 1 !important; }').catch(() => {})
         setTerminalReady(true)
       }, 400)
       setTimeout(() => wv.focus(), 700)
