@@ -105,14 +105,14 @@ export function registerIpcHandlers(): void {
     // Step 5: Post bot comment
     await postComment(issueNumber, '🤠 Agent done.')
 
-    // Step 6: Remove issue from state immediately so it vanishes from the list
-    appState.removeIssue(issueNumber)
-
-    // Step 7: Close agent window
+    // Step 6: Close agent window first so user sees immediate feedback
     closeAgentWindow(issueNumber)
 
-    // Step 8: Refetch issues from GitHub so the list is up to date
-    void forceSync()
+    // Step 7: Remove issue from state so it vanishes from the dashboard
+    appState.removeIssue(issueNumber)
+
+    // Step 8: Refetch issues from GitHub after a delay (let label removal propagate)
+    setTimeout(() => void forceSync(), 3000)
   })
 
   // Docker
