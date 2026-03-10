@@ -175,10 +175,12 @@ function IssueRow({ issue, state, onClick, onRetry, onStart, starting }: {
   )
 }
 
-function matchesFilter(title: string, number: number, filter: string): boolean {
+function matchesFilter(title: string, number: number, labels: Array<{ name: string }>, filter: string): boolean {
   const q = filter.trim().toLowerCase()
   if (!q) return true
-  return title.toLowerCase().includes(q) || String(number).includes(q)
+  const tokens = q.split(/\s+/)
+  const haystack = [title.toLowerCase(), String(number), ...labels.map((l) => l.name.toLowerCase())]
+  return tokens.every((token) => haystack.some((h) => h.includes(token)))
 }
 
 export default function DashboardApp(): React.ReactElement {
@@ -276,13 +278,13 @@ export default function DashboardApp(): React.ReactElement {
       if (sortBy === 'activity') return activityOrder(a) - activityOrder(b)
       return new Date(b.issue.updated_at).getTime() - new Date(a.issue.updated_at).getTime()
     })
-    .filter((s) => matchesFilter(s.issue.title, s.issue.number, filter))
+    .filter((s) => matchesFilter(s.issue.title, s.issue.number, s.issue.labels, filter))
 
   // "Other" issues: all open issues minus my active ones
   const myIssueNumbers = new Set(myIssues.map((s) => s.issue.number))
   const otherIssues = (allIssues ?? [])
     .filter((i) => !myIssueNumbers.has(i.number))
-    .filter((i) => matchesFilter(i.title, i.number, filter))
+    .filter((i) => matchesFilter(i.title, i.number, i.labels, filter))
     .sort((a, b) => {
       if (sortBy === 'number') return a.number - b.number
       return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
