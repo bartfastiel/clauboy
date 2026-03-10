@@ -9,10 +9,10 @@ type RowState =
   | { kind: 'waiting'; elapsed: number | null; capturedAt: string | null }
   | { kind: 'failed'; detail: string }
   | { kind: 'colleague'; login: string; labels: string[] }
-  | { kind: 'startable' }
+  | { kind: 'idle' }
 
 function getRowState(issueState: IssueState | null, trustedUser: string): RowState {
-  if (!issueState) return { kind: 'startable' }
+  if (!issueState) return { kind: 'idle' }
 
   const isColleague = !!issueState.labeledBy && issueState.labeledBy !== trustedUser
   if (isColleague) {
@@ -47,10 +47,9 @@ function formatElapsed(seconds: number): string {
   return `${s}s`
 }
 
-function StateBadge({ state, onRetry, onStart, starting }: {
+function StateBadge({ state, onRetry, starting }: {
   state: RowState
   onRetry?: () => void
-  onStart?: () => void
   starting?: boolean
 }): React.ReactElement {
   switch (state.kind) {
@@ -88,15 +87,11 @@ function StateBadge({ state, onRetry, onStart, starting }: {
         : 'queued'
       return <span className="badge badge-colleague" title={`Managed by ${state.login} (${clauboyStatus})`}>{state.login}</span>
     }
-    case 'startable':
+    case 'idle':
       return (
-        <button
-          className="badge badge-start"
-          onClick={(e) => { e.stopPropagation(); onStart?.() }}
-          disabled={starting}
-          title="Start a clauboy agent on this issue"
-          style={{ cursor: 'pointer', opacity: starting ? 0.5 : 1 }}
-        >{starting ? '…' : '▶ Start'}</button>
+        <span className="badge badge-idle" title="Click to start a clauboy agent">
+          {starting ? 'Starting…' : 'Idle'}
+        </span>
       )
   }
 }
@@ -125,12 +120,21 @@ function IssueRow({ issue, state, onClick, onRetry, onStart, starting }: {
     displayState = { ...state, elapsed: state.elapsed + delta }
   }
 
-  const isClickable = state.kind !== 'colleague' && state.kind !== 'startable'
   const isColleague = state.kind === 'colleague'
+  const isClickable = !isColleague
+
+  const handleRowClick = (): void => {
+    if (isColleague) return
+    if (state.kind === 'idle') {
+      onStart?.()
+    } else {
+      onClick?.()
+    }
+  }
 
   return (
     <div
-      onClick={isClickable ? onClick : undefined}
+      onClick={isClickable ? handleRowClick : undefined}
       style={{
         padding: '10px 16px', borderBottom: '1px solid var(--border)',
         cursor: isClickable ? 'pointer' : 'default',
@@ -160,7 +164,7 @@ function IssueRow({ issue, state, onClick, onRetry, onStart, starting }: {
           ))}
         </div>
       </div>
-      <StateBadge state={displayState} onRetry={onRetry} onStart={onStart} starting={starting} />
+      <StateBadge state={displayState} onRetry={onRetry} starting={starting} />
       <button
         className="icon-btn"
         title="Open issue on GitHub"
