@@ -192,6 +192,8 @@ export default function AgentApp(): React.ReactElement {
     if (!wv) return
     const handler = (): void => {
       setTerminalReady(true)
+      // Suppress scrollbars inside ttyd to prevent column-count flicker on resize
+      wv.insertCSS('::-webkit-scrollbar { display: none !important; } body, html { overflow: hidden !important; }').catch(() => {})
       // Auto-focus so the first keystroke reaches the terminal without an extra click
       wv.focus()
     }
@@ -284,7 +286,7 @@ export default function AgentApp(): React.ReactElement {
         </div>
       ) : isRunning ? (
         <>
-          <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
+          <div style={{ flex: 1, position: 'relative', minHeight: 0, overflow: 'hidden' }}>
             {!terminalReady && (
               <div style={{
                 position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
