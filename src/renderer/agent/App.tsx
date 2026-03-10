@@ -5,6 +5,7 @@ import { useI18n } from '../shared/useI18n'
 const LOADING_STEPS = [
   'Connecting to GitHub...',
   'Creating worktree...',
+  'Pulling image...',
   'Starting container...',
   'Launching Claude Code...'
 ]

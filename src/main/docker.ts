@@ -55,6 +55,16 @@ export async function ensureNetwork(name: string): Promise<void> {
   }
 }
 
+export async function imageExists(imageName: string): Promise<boolean> {
+  try {
+    const d = getDocker()
+    const images = await d.listImages({ filters: { reference: [imageName] } })
+    return images.length > 0
+  } catch {
+    return false
+  }
+}
+
 export async function startContainer(
   issueNumber: number,
   config: Config,

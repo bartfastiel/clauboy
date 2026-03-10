@@ -7,7 +7,7 @@ import { spawn } from 'child_process'
 import { appState } from './state'
 import * as path from 'path'
 import * as fs from 'fs'
-import { startContainer, listRunningContainers, captureAgentPane, TERMINAL_PORT_BASE } from './docker'
+import { startContainer, listRunningContainers, captureAgentPane, TERMINAL_PORT_BASE, imageExists, pullImage } from './docker'
 import { loadConfig } from './config'
 import { ClauboyLabel, IssueState } from '../shared/types'
 import { logger } from './logger'
@@ -229,6 +229,18 @@ async function runPollTick(): Promise<void> {
           issueState.loadingStep = 'Starting container...'
           appState.updateIssue(issue.number, issueState)
 
+          // Auto-pull image if not available locally
+          const hasImage = await imageExists(config.docker.imageName)
+          if (!hasImage) {
+            logger.info(`Issue #${issue.number}: image "${config.docker.imageName}" not found — pulling…`)
+            issueState.loadingStep = 'Pulling image...'
+            appState.updateIssue(issue.number, issueState)
+            await pullImage(config.docker.imageName, (log) => logger.debug(`[pull] ${log.trim()}`))
+            logger.info(`Issue #${issue.number}: image pulled successfully`)
+          }
+
+          issueState.loadingStep = 'Starting container...'
+          appState.updateIssue(issue.number, issueState)
           logger.info(`Issue #${issue.number}: starting Docker container with workspace="${wsPath}" image="${config.docker.imageName}"`)
           const containerId = await startContainer(issue.number, config, wsPath, issue.title)
           logger.info(`Issue #${issue.number}: container started id=${containerId.slice(0, 12)}`)
