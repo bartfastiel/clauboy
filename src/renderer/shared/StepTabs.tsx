@@ -9,7 +9,7 @@ export interface StepTabsProps {
 
 export function StepTabs({ steps, current, maxReachable, onSelect }: StepTabsProps): React.ReactElement {
   return (
-    <div style={{ display: 'flex', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+    <div style={{ display: 'flex', justifyContent: 'center', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
       {steps.map((title, i) => {
         const isActive = i === current
         const isClickable = i <= maxReachable
@@ -20,7 +20,11 @@ export function StepTabs({ steps, current, maxReachable, onSelect }: StepTabsPro
             title={title}
             style={{
               flex: 1,
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
               padding: '9px 4px',
+              border: 'none',
               borderRadius: 0,
               background: 'transparent',
               color: isActive ? 'var(--text)' : isClickable ? 'var(--text-secondary)' : 'var(--text-muted)',
@@ -29,7 +33,6 @@ export function StepTabs({ steps, current, maxReachable, onSelect }: StepTabsPro
               borderBottom: `2px solid ${isActive ? 'var(--accent)' : 'transparent'}`,
               cursor: isClickable ? 'pointer' : 'default',
               opacity: isClickable ? 1 : 0.35,
-              textAlign: 'center',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',

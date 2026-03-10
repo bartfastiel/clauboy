@@ -246,8 +246,8 @@ export function registerIpcHandlers(): void {
   })
 
   // GitHub App creation via manifest flow
-  ipcMain.handle(IPC.GITHUB_CREATE_APP, async (_event, owner: string) => {
-    return createGithubAppViaManifest(owner)
+  ipcMain.handle(IPC.GITHUB_CREATE_APP, async (_event, owner: string, isOrg: boolean) => {
+    return createGithubAppViaManifest(owner, isOrg)
   })
 
   // Poll for GitHub App installation ID

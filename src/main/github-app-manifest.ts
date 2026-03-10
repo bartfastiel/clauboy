@@ -10,7 +10,7 @@ export interface AppCredentials {
   slug: string
 }
 
-export async function createGithubAppViaManifest(owner: string): Promise<AppCredentials> {
+export async function createGithubAppViaManifest(owner: string, isOrg = false): Promise<AppCredentials> {
   return new Promise((resolve, reject) => {
     let server: http.Server | null = null
     let resolved = false
@@ -23,6 +23,11 @@ export async function createGithubAppViaManifest(owner: string): Promise<AppCred
       if (err) reject(err)
       else resolve(value!)
     }
+
+    // For orgs, use the org-specific endpoint; for personal accounts, use the user endpoint
+    const formAction = isOrg
+      ? `https://github.com/organizations/${owner}/settings/apps/new`
+      : `https://github.com/settings/apps/new`
 
     server = http.createServer((req, res) => {
       const url = new URL(req.url ?? '/', 'http://localhost')
@@ -44,8 +49,8 @@ export async function createGithubAppViaManifest(owner: string): Promise<AppCred
 <body style="background:#1a1a1a;color:#e8e8e8;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
   <div style="text-align:center">
     <div style="font-size:48px">🤠</div>
-    <p>Opening GitHub to create your Clauboy Bot app…</p>
-    <form id="f" method="post" action="https://github.com/settings/apps/new">
+    <p>Opening GitHub to create your Clauboy Bot app on <strong>${owner}</strong>…</p>
+    <form id="f" method="post" action="${formAction}">
       <input type="hidden" name="manifest" value="${manifest.replace(/"/g, '&quot;').replace(/'/g, '&#39;')}">
     </form>
     <script>document.getElementById('f').submit();</script>

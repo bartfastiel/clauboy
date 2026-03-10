@@ -97,8 +97,8 @@ const clauboyAPI = {
   labelIssue: (issueNumber: number): Promise<boolean> =>
     ipcRenderer.invoke(IPC.GITHUB_LABEL_ISSUE, issueNumber),
 
-  createGithubApp: (owner: string): Promise<{ appId: string; privateKey: string; installUrl: string; slug: string }> =>
-    ipcRenderer.invoke(IPC.GITHUB_CREATE_APP, owner),
+  createGithubApp: (owner: string, isOrg?: boolean): Promise<{ appId: string; privateKey: string; installUrl: string; slug: string }> =>
+    ipcRenderer.invoke(IPC.GITHUB_CREATE_APP, owner, isOrg ?? false),
 
   getInstallationId: (appId: string, privateKey: string, owner: string): Promise<string | null> =>
     ipcRenderer.invoke(IPC.GITHUB_GET_INSTALLATION_ID, appId, privateKey, owner),

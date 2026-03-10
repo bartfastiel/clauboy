@@ -62,6 +62,12 @@ button:active {
   opacity: 0.8;
 }
 
+button:disabled {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+
 button.primary {
   background: var(--accent);
   color: white;

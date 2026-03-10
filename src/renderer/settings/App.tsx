@@ -90,7 +90,8 @@ function SettingsBotTab({ config, setConfig }: {
     setBotError('')
     setCreating(true)
     try {
-      const creds = await window.clauboy.createGithubApp(config.github.owner)
+      const isOrg = config.github.owner !== config.github.trustedUser
+      const creds = await window.clauboy.createGithubApp(config.github.owner, isOrg)
       setConfig((c) => c ? { ...c, github: { ...c.github, appId: creds.appId, privateKey: creds.privateKey } } : c)
       setInstallUrl(creds.installUrl)
       setCreating(false)

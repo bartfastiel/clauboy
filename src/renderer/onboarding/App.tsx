@@ -6,8 +6,8 @@ type Step = 1 | 2 | 3 | 4 | 5 | 6
 
 const STEP_TITLES = [
   'API Keys',
-  'GitHub Bot',
   'Repository',
+  'GitHub Bot',
   'Cloning…',
   'Docker Setup',
   'Ready!'
@@ -60,32 +60,29 @@ function StatusRow({ label, state, detail }: { label: string; state: ValidationS
 function BotSetupStep({
   config,
   setConfig,
+  userLogin,
   appCreating,
   appWaitingInstall,
   appInstallUrl,
   error,
   onCreateApp,
-  onNext
+  onNext,
+  onSkip
 }: {
   config: Config
   setConfig: React.Dispatch<React.SetStateAction<Config>>
+  userLogin: string
   appCreating: boolean
   appWaitingInstall: boolean
   appInstallUrl: string
   error: string
-  onCreateApp: () => void
+  onCreateApp: (appOwner: string) => void
   onNext: () => void
+  onSkip: () => void
 }): React.ReactElement {
   const botConfigured = !!(config.github.appId && config.github.installationId && config.github.privateKey)
-
-  // Auto-start bot creation when entering this step (if not already created/in progress)
-  const autoStarted = useRef(false)
-  useEffect(() => {
-    if (!config.github.appId && !appCreating && !appWaitingInstall && !autoStarted.current) {
-      autoStarted.current = true
-      onCreateApp()
-    }
-  }, [])
+  const isOrg = config.github.owner !== userLogin
+  const [appOwner, setAppOwner] = useState(isOrg ? config.github.owner : userLogin)
 
   // Auto-advance when bot is fully configured
   useEffect(() => {
@@ -100,8 +97,42 @@ function BotSetupStep({
   return (
     <div>
       <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', fontSize: '13px' }}>
-        Setting up a GitHub Bot so agents post comments as a bot, not your personal account.
+        A GitHub App lets agents post comments as a bot instead of your personal account. This is optional — you can skip if you prefer comments to appear as you.
       </p>
+
+      {!appCreating && !appWaitingInstall && !botConfigured && (
+        <div>
+          <div className="form-group">
+            <label>Create app on</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
+              {isOrg && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
+                  <input type="radio" checked={appOwner === config.github.owner} onChange={() => setAppOwner(config.github.owner)} />
+                  <span><strong>{config.github.owner}</strong> (organization)</span>
+                </label>
+              )}
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
+                <input type="radio" checked={appOwner === userLogin} onChange={() => setAppOwner(userLogin)} />
+                <span><strong>{userLogin}</strong> (personal account)</span>
+              </label>
+              {isOrg && appOwner !== userLogin && (
+                <span style={{ color: 'var(--text-muted)', fontSize: '11px', marginLeft: '24px' }}>
+                  Requires org admin permissions on <strong>{config.github.owner}</strong>.
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+            <button className="primary" onClick={() => onCreateApp(appOwner)} style={{ flex: 1 }}>
+              Create Bot App
+            </button>
+            <button onClick={onSkip} style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+              Skip
+            </button>
+          </div>
+        </div>
+      )}
 
       {appCreating && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '24px 0' }}>
@@ -114,10 +145,10 @@ function BotSetupStep({
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '24px 0' }}>
           <StatusRow label="Bot app created" state="done" />
           <span style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
-            Now install the app on your GitHub account…
+            Now install the app on <strong>{appOwner}</strong>…
           </span>
           <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
-            Approve in the browser window that just opened.
+            Approve in the browser window that just opened. Make sure to grant access to the <strong>{config.github.repo}</strong> repository.
           </span>
           <button onClick={() => window.clauboy.openExternal(appInstallUrl).catch(console.error)} style={{ fontSize: '11px' }}>
             Reopen install page
@@ -165,7 +196,7 @@ function BotSetupStep({
       {error && !appCreating && !appWaitingInstall && !config.github.appId && (
         <button
           className="primary"
-          onClick={() => { autoStarted.current = false; onCreateApp() }}
+          onClick={() => onCreateApp(appOwner)}
           style={{ marginTop: '12px', width: '100%' }}
         >
           Retry Bot Setup
@@ -184,12 +215,12 @@ export default function OnboardingApp(): React.ReactElement {
   const [githubValidation, setGithubValidation] = useState<ValidationState>('idle')
   const [githubUser, setGithubUser] = useState<{ login: string; name: string | null } | null>(null)
 
-  // Step 2 – GitHub App creation
+  // Step 3 – GitHub App creation
   const [appCreating, setAppCreating] = useState(false)
   const [appWaitingInstall, setAppWaitingInstall] = useState(false)
   const [appInstallUrl, setAppInstallUrl] = useState('')
 
-  // Step 3 – repo autocomplete
+  // Step 2 – repo autocomplete
   const [repos, setRepos] = useState<Array<{ owner: string; name: string }>>([])
 
   // Step 4 – clone
@@ -260,51 +291,61 @@ export default function OnboardingApp(): React.ReactElement {
   const updateGithub = (key: keyof Config['github'], value: string): void =>
     setConfig((c) => ({ ...c, github: { ...c.github, [key]: value } }))
 
-  const handleStep1Next = async (): Promise<void> => {
-    setError('')
-    if (!config.github.token) { setError('GitHub Personal Access Token is required.'); return }
-
-    setGithubValidation('loading')
-    try {
-      const user = await window.clauboy.validateGithubToken(config.github.token)
-      setGithubUser(user)
-      setGithubValidation('ok')
-      setConfig((c) => ({
-        ...c,
-        github: {
-          ...c.github,
-          owner: c.github.owner || user.login,
-          trustedUser: c.github.trustedUser || user.login
-        }
-      }))
-      window.clauboy.listRepos(config.github.token).then(setRepos).catch(() => {/* ignore */})
-    } catch (err) {
-      setGithubValidation('error')
-      setError(`GitHub token invalid: ${String(err)}`)
+  // Auto-validate token when it changes (debounced)
+  const validateTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (!config.github.token) {
+      setGithubValidation('idle')
+      setGithubUser(null)
+      setError('')
       return
     }
+    setGithubValidation('loading')
+    setError('')
+    if (validateTimer.current) clearTimeout(validateTimer.current)
+    validateTimer.current = setTimeout(() => {
+      window.clauboy.validateGithubToken(config.github.token)
+        .then((user) => {
+          setGithubUser(user)
+          setGithubValidation('ok')
+          setConfig((c) => ({
+            ...c,
+            github: {
+              ...c.github,
+              owner: c.github.owner || user.login,
+              trustedUser: c.github.trustedUser || user.login
+            }
+          }))
+          window.clauboy.listRepos(config.github.token).then(setRepos).catch(() => {})
+        })
+        .catch((err: Error) => {
+          setGithubValidation('error')
+          setError(`GitHub token invalid: ${String(err)}`)
+        })
+    }, 500)
+    return () => { if (validateTimer.current) clearTimeout(validateTimer.current) }
+  }, [config.github.token])
 
-    setStep(2)
-  }
-
-  const handleCreateApp = async (): Promise<void> => {
+  const handleCreateApp = async (appOwner: string): Promise<void> => {
     setError('')
     setAppCreating(true)
+    const isOrg = appOwner !== githubUser?.login
     try {
-      const creds = await window.clauboy.createGithubApp(config.github.owner)
+      const creds = await window.clauboy.createGithubApp(appOwner, isOrg)
       setConfig((c) => ({ ...c, github: { ...c.github, appId: creds.appId, privateKey: creds.privateKey } }))
       setAppInstallUrl(creds.installUrl)
       setAppCreating(false)
       setAppWaitingInstall(true)
       // Open install page and poll for installation ID
       await window.clauboy.openExternal(creds.installUrl)
+      // Poll for installation — check both org and user in case user installs on different account
       for (let i = 0; i < 60; i++) {
         await new Promise((r) => setTimeout(r, 3000))
         const id = await window.clauboy.getInstallationId(creds.appId, creds.privateKey, config.github.owner)
         if (id) {
           setConfig((c) => ({ ...c, github: { ...c.github, installationId: id } }))
           setAppWaitingInstall(false)
-          setStep(3)
+          setStep(4)
           return
         }
       }
@@ -327,12 +368,6 @@ export default function OnboardingApp(): React.ReactElement {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Title header */}
-      <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-        <span style={{ fontSize: '20px' }}>🤠</span>
-        <span style={{ fontWeight: 700, fontSize: '15px' }}>Clauboy Setup</span>
-      </div>
-
       {/* Step tabs – only past and current step are reachable */}
       <StepTabs
         steps={STEP_TITLES}
@@ -348,10 +383,10 @@ export default function OnboardingApp(): React.ReactElement {
         {step === 1 && (
           <div>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', fontSize: '13px' }}>
-              Create a GitHub PAT with <code style={{ background: 'var(--bg-tertiary)', padding: '1px 4px', borderRadius: '3px' }}>repo</code> and <code style={{ background: 'var(--bg-tertiary)', padding: '1px 4px', borderRadius: '3px' }}>issues</code> scopes.
+              Create a GitHub PAT with <code style={{ background: 'var(--bg-tertiary)', padding: '1px 4px', borderRadius: '3px' }}>repo</code> and <code style={{ background: 'var(--bg-tertiary)', padding: '1px 4px', borderRadius: '3px' }}>read:org</code> scopes.
             </p>
             <button
-              onClick={() => window.clauboy.openExternal('https://github.com/settings/tokens/new?description=Clauboy&scopes=repo,issues').catch(console.error)}
+              onClick={() => window.clauboy.openExternal('https://github.com/settings/tokens/new?description=Clauboy&scopes=repo,read:org').catch(console.error)}
               style={{ marginBottom: '16px', fontSize: '12px' }}
             >
               🔗 Open GitHub Token Page
@@ -365,29 +400,15 @@ export default function OnboardingApp(): React.ReactElement {
               <input
                 type="password"
                 value={config.github.token}
-                onChange={(e) => { updateGithub('token', e.target.value); setGithubValidation('idle'); setGithubUser(null) }}
+                onChange={(e) => updateGithub('token', e.target.value)}
                 placeholder="ghp_…"
               />
             </div>
           </div>
         )}
 
-        {/* ── Step 2: GitHub Bot ── */}
+        {/* ── Step 2: Repository ── */}
         {step === 2 && (
-          <BotSetupStep
-            config={config}
-            setConfig={setConfig}
-            appCreating={appCreating}
-            appWaitingInstall={appWaitingInstall}
-            appInstallUrl={appInstallUrl}
-            error={error}
-            onCreateApp={() => void handleCreateApp()}
-            onNext={() => setStep(3)}
-          />
-        )}
-
-        {/* ── Step 3: Repository ── */}
-        {step === 3 && (
           <div>
             <div className="form-group">
               <label>Repository Owner</label>
@@ -434,6 +455,22 @@ export default function OnboardingApp(): React.ReactElement {
               />
             </div>
           </div>
+        )}
+
+        {/* ── Step 3: GitHub Bot ── */}
+        {step === 3 && (
+          <BotSetupStep
+            config={config}
+            setConfig={setConfig}
+            userLogin={githubUser?.login ?? ''}
+            appCreating={appCreating}
+            appWaitingInstall={appWaitingInstall}
+            appInstallUrl={appInstallUrl}
+            error={error}
+            onCreateApp={(appOwner) => void handleCreateApp(appOwner)}
+            onNext={() => setStep(4)}
+            onSkip={() => setStep(4)}
+          />
         )}
 
         {/* ── Step 4: Clone (automatic) ── */}
@@ -514,35 +551,33 @@ export default function OnboardingApp(): React.ReactElement {
 
       {/* Navigation */}
       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 24px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
-        <button
-          onClick={() => { setError(''); setStep((s) => (s > 1 ? ((s - 1) as Step) : s)) }}
-          disabled={step === 1 || step === 4 || step === 5 || step === 6}
-          style={{ opacity: (step === 1 || step === 4 || step === 5 || step === 6) ? 0.3 : 1 }}
-        >
-          ← Back
-        </button>
+        {step > 1 && step <= 3 ? (
+          <button onClick={() => { setError(''); setStep((s) => (s > 1 ? ((s - 1) as Step) : s)) }}>
+            ← Back
+          </button>
+        ) : (
+          <div />
+        )}
 
         {step === 1 && (
-          <button className="primary" onClick={() => void handleStep1Next()}>
-            Next →
-          </button>
-        )}
-        {step === 3 && (
           <button
             className="primary"
-            onClick={() => {
-              if (!config.github.owner || !config.github.repo) {
-                setError('Repository owner and name are required.')
-                return
-              }
-              setError('')
-              setStep(4)
-            }}
+            disabled={githubValidation !== 'ok'}
+            onClick={() => setStep(2)}
           >
             Next →
           </button>
         )}
-        {(step === 2 || step === 4 || step === 5 || step === 6) && <div />}
+        {step === 2 && (
+          <button
+            className="primary"
+            disabled={!config.github.owner || !config.github.repo}
+            onClick={() => { setError(''); setStep(3) }}
+          >
+            Next →
+          </button>
+        )}
+        {(step === 3 || step === 4 || step === 5 || step === 6) && <div />}
       </div>
     </div>
   )
