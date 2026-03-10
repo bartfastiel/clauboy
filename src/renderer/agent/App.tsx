@@ -195,10 +195,9 @@ export default function AgentApp(): React.ReactElement {
     }
     const onDidStopLoading = (): void => {
       // Wait for xterm.js to measure and reflow to the correct column count
-      setTimeout(() => {
-        setTerminalReady(true)
-        wv.focus()
-      }, 200)
+      setTimeout(() => setTerminalReady(true), 200)
+      // Focus separately after the opacity transition completes to avoid triggering a resize during reveal
+      setTimeout(() => wv.focus(), 500)
     }
     wv.addEventListener('dom-ready', onDomReady)
     wv.addEventListener('did-stop-loading', onDidStopLoading)
@@ -294,16 +293,16 @@ export default function AgentApp(): React.ReactElement {
       ) : isRunning ? (
         <>
           <div style={{ flex: 1, position: 'relative', minHeight: 0, overflow: 'hidden' }}>
-            {!terminalReady && (
-              <div style={{
-                position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center', gap: '12px',
-                background: 'var(--bg)', zIndex: 1, pointerEvents: 'none'
-              }}>
-                <span style={{ fontSize: '28px', animation: 'spin 1s linear infinite' }}>⟳</span>
-                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Connecting to terminal…</span>
-              </div>
-            )}
+            <div style={{
+              position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center', gap: '12px',
+              background: 'var(--bg)', zIndex: 1, pointerEvents: 'none',
+              opacity: terminalReady ? 0 : 1,
+              transition: 'opacity 0.15s ease'
+            }}>
+              <span style={{ fontSize: '28px', animation: 'spin 1s linear infinite' }}>⟳</span>
+              <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Connecting to terminal…</span>
+            </div>
             <webview
               ref={webviewRef}
               src={`http://localhost:${issueState.terminalPort ?? (37680 + issueNumber)}`}
