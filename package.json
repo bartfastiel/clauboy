@@ -13,8 +13,8 @@
     "test:docker": "playwright test --project=docker"
   },
   "dependencies": {
-    "@octokit/auth-app": "^7.1.1",
-    "@octokit/rest": "^21.0.2",
+    "@octokit/auth-app": "^8.2.0",
+    "@octokit/rest": "^22.0.1",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/xterm": "^5.5.0",
     "dockerode": "^4.0.2",
@@ -36,7 +36,7 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
     "electron": "^32.1.0",
-    "electron-builder": "^25.0.5",
+    "electron-builder": "^26.8.1",
     "electron-vite": "^2.3.0",
     "typescript": "^5.5.4",
     "vite": "^5.4.1"
