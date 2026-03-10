@@ -1,4 +1,5 @@
 import { BrowserWindow, shell, app } from 'electron'
+import { loadConfig } from './config'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 
@@ -74,10 +75,17 @@ export function createDashboardWindow(): BrowserWindow {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
     },
-    title: 'Clauboy'
+    title: (() => {
+      const cfg = loadConfig()
+      return cfg.github.owner && cfg.github.repo
+        ? `Clauboy – ${cfg.github.owner}/${cfg.github.repo}`
+        : 'Clauboy'
+    })()
   })
 
   loadWindow(win, 'dashboard')
+
+  win.on('page-title-updated', (e) => e.preventDefault())
 
   win.on('closed', () => {
     dashboardWindow = null
