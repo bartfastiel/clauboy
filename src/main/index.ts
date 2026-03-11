@@ -94,17 +94,23 @@ app.whenReady().then(async () => {
     appState.setState({ isOnboarding: true })
     createOnboardingWindow()
   } else {
-    try {
-      initGitHub(config)
-      initDocker(config)
+    initGitHub(config)
+    initDocker(config)
 
+    try {
       await ensureLabelsExist()
-      await startupSync()
-      startPolling(5 * 60 * 1000)
-      startActivityPolling()
     } catch (err) {
-      console.error('Failed to initialize:', err)
+      logger.warn(`ensureLabelsExist failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`)
     }
+
+    try {
+      await startupSync()
+    } catch (err) {
+      logger.error(`Startup sync failed: ${err instanceof Error ? err.message : String(err)}`)
+    }
+
+    startPolling(5 * 60 * 1000)
+    startActivityPolling()
 
     createDashboardWindow()
   }

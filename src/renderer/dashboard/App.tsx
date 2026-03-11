@@ -13,6 +13,7 @@ window.clauboy.onLogData((entry: LogEntry) => {
 
 type RowState =
   | { kind: 'starting'; detail: string }
+  | { kind: 'initializing' }
   | { kind: 'busy'; elapsed: number | null; capturedAt: string | null }
   | { kind: 'waiting'; elapsed: number | null; capturedAt: string | null }
   | { kind: 'failed'; detail: string }
@@ -38,6 +39,7 @@ function getRowState(issueState: IssueState | null, trustedUser: string): RowSta
   if (issueState.containerStatus === 'running') {
     const elapsed = issueState.agentElapsedSeconds
     const capturedAt = issueState.agentElapsedCapturedAt
+    if (issueState.agentActivity === null) return { kind: 'initializing' }
     if (issueState.agentActivity === 'waiting') return { kind: 'waiting', elapsed, capturedAt }
     return { kind: 'busy', elapsed, capturedAt }
   }
@@ -63,6 +65,8 @@ function StateBadge({ state, onRetry, starting }: {
   switch (state.kind) {
     case 'starting':
       return <span className="badge badge-starting" title={state.detail}>Starting</span>
+    case 'initializing':
+      return <span className="badge badge-busy" title="Container is starting up — no action needed">Starting</span>
     case 'busy':
       return (
         <span className="badge badge-busy" title={`Agent is working — no action needed${state.elapsed !== null ? `\nElapsed: ${formatElapsed(state.elapsed)}` : ''}`}>
@@ -113,7 +117,7 @@ function IssueRow({ issue, state, onClick, onRetry, onStart, starting }: {
   starting?: boolean
 }): React.ReactElement {
   const [now, setNow] = useState(() => Date.now())
-  const isActive = state.kind === 'busy' || state.kind === 'waiting' || state.kind === 'starting' || state.kind === 'failed'
+  const isActive = state.kind === 'busy' || state.kind === 'waiting' || state.kind === 'starting' || state.kind === 'initializing' || state.kind === 'failed'
 
   useEffect(() => {
     if (state.kind !== 'busy' && state.kind !== 'waiting') return
@@ -283,8 +287,9 @@ export default function DashboardApp(): React.ReactElement {
     if (state.kind === 'waiting') return 0
     if (state.kind === 'failed') return 1
     if (state.kind === 'busy') return 2
-    if (state.kind === 'starting') return 3
-    return 4
+    if (state.kind === 'initializing') return 3
+    if (state.kind === 'starting') return 4
+    return 5
   }
 
   const sortedMyIssues = [...myIssues]
