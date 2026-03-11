@@ -1,7 +1,15 @@
 import React, { useEffect, useState } from 'react'
-import { AppState, Config, IssueState, GitHubIssue } from '../../shared/types'
+import { AppState, Config, IssueState, GitHubIssue, LogEntry } from '../../shared/types'
 import { VERSION } from '../../shared/version'
 import { useI18n } from '../shared/useI18n'
+
+const warnErrorBuffer: LogEntry[] = []
+window.clauboy.onLogData((entry: LogEntry) => {
+  if (entry.level === 'warn' || entry.level === 'error') {
+    warnErrorBuffer.push(entry)
+    if (warnErrorBuffer.length > 50) warnErrorBuffer.splice(0, warnErrorBuffer.length - 50)
+  }
+})
 
 type RowState =
   | { kind: 'starting'; detail: string }
@@ -192,6 +200,8 @@ export default function DashboardApp(): React.ReactElement {
   const [startingIssue, setStartingIssue] = useState<number | null>(null)
   const [filter, setFilter] = useState('')
   const [sortBy, setSortBy] = useState<'updated' | 'number' | 'activity'>('number')
+  const [warnLogs, setWarnLogs] = useState<LogEntry[]>([...warnErrorBuffer])
+  const [dismissedCount, setDismissedCount] = useState(0)
   const { t } = useI18n()
 
   useEffect(() => {
@@ -199,7 +209,12 @@ export default function DashboardApp(): React.ReactElement {
     const unsubConfig = window.clauboy.onConfigUpdate(setConfig)
     window.clauboy.getState().then(setAppState).catch(console.error)
     const unsubState = window.clauboy.onStateUpdate(setAppState)
-    return () => { unsubState(); unsubConfig() }
+    const unsubLog = window.clauboy.onLogData((entry: LogEntry) => {
+      if (entry.level === 'warn' || entry.level === 'error') {
+        setWarnLogs((prev) => [...prev.slice(-49), entry])
+      }
+    })
+    return () => { unsubState(); unsubConfig(); unsubLog() }
   }, [])
 
   useEffect(() => {
@@ -290,6 +305,8 @@ export default function DashboardApp(): React.ReactElement {
       return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
     })
 
+  const visibleLogs = warnLogs.slice(dismissedCount)
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Toolbar */}
@@ -332,6 +349,25 @@ export default function DashboardApp(): React.ReactElement {
               <span>⚠️ Orphan:</span>
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-secondary)' }}>{wtPath}</span>
               <button style={{ fontSize: '11px', padding: '2px 8px' }} onClick={() => handleCleanupOrphan(wtPath)}>{t('cleanup')}</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Warn/error log banner */}
+      {visibleLogs.length > 0 && (
+        <div style={{ padding: '6px 16px', background: 'rgba(248,81,73,0.08)', borderBottom: '1px solid rgba(248,81,73,0.25)', maxHeight: '120px', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+            <span style={{ fontSize: '11px', color: 'rgba(248,81,73,0.8)', fontWeight: 600 }}>Warnings / Errors</span>
+            <button
+              style={{ fontSize: '10px', padding: '1px 6px', opacity: 0.7 }}
+              onClick={() => setDismissedCount(warnLogs.length)}
+            >Dismiss all</button>
+          </div>
+          {visibleLogs.map((entry, i) => (
+            <div key={dismissedCount + i} style={{ fontSize: '11px', fontFamily: 'monospace', color: entry.level === 'error' ? '#f85149' : '#e3b341', wordBreak: 'break-all', lineHeight: '1.5' }}>
+              <span style={{ opacity: 0.6 }}>{entry.ts.slice(11, 19)} </span>
+              [{entry.level.toUpperCase()}] {entry.msg}
             </div>
           ))}
         </div>

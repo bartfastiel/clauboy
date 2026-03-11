@@ -147,16 +147,28 @@ function ContainerLogs({ issueNumber, containerStatus }: { issueNumber: number; 
   }
 
   if (!logs) {
+    const isRunningContainer = containerStatus === 'running'
     return (
       <div style={{
         flex: 1, display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
         gap: '8px', color: 'var(--text-secondary)'
       }}>
-        <span>No container found for this issue.</span>
-        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-          Add the <code style={{ background: 'var(--bg-tertiary)', padding: '1px 4px', borderRadius: '3px' }}>clauboy</code> label to start an agent.
-        </span>
+        {isRunningContainer ? (
+          <>
+            <span>Container is running but has no logs yet.</span>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+              The agent image may be misconfigured — check Settings → Docker.
+            </span>
+          </>
+        ) : (
+          <>
+            <span>No container found for this issue.</span>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+              Add the <code style={{ background: 'var(--bg-tertiary)', padding: '1px 4px', borderRadius: '3px' }}>clauboy</code> label to start an agent.
+            </span>
+          </>
+        )}
       </div>
     )
   }

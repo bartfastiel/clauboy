@@ -26,6 +26,7 @@ import {
 import { removeWorktree } from './worktree'
 import * as fs from 'fs'
 import { forceSync, startPolling, startActivityPolling } from './polling'
+import { logger } from './logger'
 import { cloneRepo } from './worktree'
 import { setLabel, postComment, buildCreateIssueUrl, initGitHub, fetchAllOpenIssues } from './github'
 import { createGithubAppViaManifest, getInstallationId } from './github-app-manifest'
@@ -79,7 +80,7 @@ export function registerIpcHandlers(): void {
         issueNumber,
         'Any uncommitted changes or unpushed commits? Please commit and push now.',
         webContents
-      ).catch((err) => console.error('Teardown prompt failed:', err))
+      ).catch((err) => logger.error(`Issue #${issueNumber}: teardown prompt failed: ${err}`))
     }
 
     const state = appState.getState()
@@ -96,14 +97,16 @@ export function registerIpcHandlers(): void {
 
     // Step 3: Remove worktree
     await removeWorktree(config, issueNumber).catch((err) =>
-      console.error('removeWorktree failed:', err)
+      logger.error(`Issue #${issueNumber}: removeWorktree failed: ${err}`)
     )
 
     // Step 4: Remove ALL clauboy labels so issue disappears from the list
     await setLabel(issueNumber, [], ['clauboy', 'clauboy:running', 'clauboy:done', 'clauboy:error'])
 
     // Step 5: Post bot comment
-    await postComment(issueNumber, '🤠 Agent done.')
+    await postComment(issueNumber, '🤠 Agent done.').catch((err) =>
+      logger.error(`Issue #${issueNumber}: failed to post teardown comment: ${err}`)
+    )
 
     // Step 6: Close agent window first so user sees immediate feedback
     closeAgentWindow(issueNumber)
