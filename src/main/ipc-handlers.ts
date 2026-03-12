@@ -276,7 +276,9 @@ export function registerIpcHandlers(): void {
     const match = worktreePath.match(/issue-(\d+)/)
     if (match) {
       const issueNumber = parseInt(match[1], 10)
-      await stopContainer(`clauboy-issue-${issueNumber}`).catch(() => {})
+      await stopContainer(`clauboy-issue-${issueNumber}`).catch((err) =>
+        logger.debug(`Orphan cleanup: failed to stop container for issue #${issueNumber} — ${err instanceof Error ? err.message : String(err)}`)
+      )
     }
     if (fs.existsSync(worktreePath)) {
       fs.rmSync(worktreePath, { recursive: true, force: true })
