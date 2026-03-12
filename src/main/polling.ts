@@ -37,7 +37,7 @@ async function refreshContainerToken(issueNumber: number): Promise<void> {
       if (code === 0) {
         logger.info(`Issue #${issueNumber}: refreshed GH_TOKEN in tmux environment`)
       } else {
-        logger.warn(`Issue #${issueNumber}: tmux set-environment failed with code ${code}`)
+        logger.debug(`Issue #${issueNumber}: tmux set-environment failed with code ${code} (container may still be starting)`)
       }
       resolve()
     })
