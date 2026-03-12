@@ -2,6 +2,7 @@ import * as path from 'path'
 import * as fs from 'fs'
 import { simpleGit, SimpleGit } from 'simple-git'
 import { Config } from '../shared/types'
+import { logger } from './logger'
 
 export function repoPath(config: Config): string {
   const cloneDir = config.cloneDir ?? process.env['CLAUBOY_CONFIG_DIR'] ?? path.join(process.env['USERPROFILE'] ?? '~', '.clauboy', 'repos')
@@ -98,7 +99,7 @@ export async function removeWorktree(
   try {
     await git.raw(['worktree', 'remove', '--force', wtPath])
   } catch (err) {
-    console.error('Failed to remove worktree:', err)
+    logger.error(`Failed to remove worktree: ${err instanceof Error ? err.message : String(err)}`)
     // Try manual cleanup
     if (fs.existsSync(wtPath)) {
       fs.rmSync(wtPath, { recursive: true, force: true })

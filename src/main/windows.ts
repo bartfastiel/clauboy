@@ -2,6 +2,7 @@ import { BrowserWindow, shell, app } from 'electron'
 import { loadConfig } from './config'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
+import { logger } from './logger'
 
 function iconPath(): string {
   return app.isPackaged
@@ -39,15 +40,15 @@ function loadWindow(
 ): void {
   const url = getRendererUrl(name, params)
   if (url) {
-    win.loadURL(url).catch((err) => console.error(`[windows] loadURL failed for ${name}:`, err))
+    win.loadURL(url).catch((err) => logger.error(`loadURL failed for ${name}: ${err instanceof Error ? err.message : String(err)}`))
   } else {
     win.loadFile(join(__dirname, `../renderer/${name}/index.html`), {
       query: params
-    }).catch((err) => console.error(`[windows] loadFile failed for ${name}:`, err))
+    }).catch((err) => logger.error(`loadFile failed for ${name}: ${err instanceof Error ? err.message : String(err)}`))
   }
 
   win.webContents.on('did-fail-load', (_e, code, desc, failedUrl) => {
-    console.error(`[windows] did-fail-load name=${name} code=${code} desc=${desc} url=${failedUrl}`)
+    logger.error(`did-fail-load name=${name} code=${code} desc=${desc} url=${failedUrl}`)
   })
 
   win.webContents.setWindowOpenHandler(({ url: openUrl }) => {

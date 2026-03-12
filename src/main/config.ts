@@ -3,6 +3,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import * as yaml from 'js-yaml'
 import { Button, Config, DEFAULT_BUTTONS } from '../shared/types'
+import { logger } from './logger'
 
 // Replace any saved button prompt that still injects {{ISSUE_BODY}} or {{ISSUE_TITLE}}
 // with the safe version from DEFAULT_BUTTONS.
@@ -142,7 +143,7 @@ export function loadConfig(): Config {
 
     return config
   } catch (err) {
-    console.error('Failed to load config:', err)
+    logger.error(`Failed to load config: ${err instanceof Error ? err.message : String(err)}`)
     return { ...DEFAULT_CONFIG }
   }
 }

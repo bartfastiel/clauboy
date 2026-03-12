@@ -7,6 +7,7 @@ import {
   ClauboyLabel,
   LABEL_COLORS
 } from '../shared/types'
+import { logger } from './logger'
 
 let octokit: Octokit | null = null
 let appOctokit: Octokit | null = null
@@ -17,7 +18,7 @@ export function initGitHub(config: Config): void {
   octokit = new Octokit({ auth: config.github.token })
 
   const hasApp = !!(config.github.appId && config.github.installationId && config.github.privateKey)
-  console.log(`[github] initGitHub: hasApp=${hasApp} appId=${config.github.appId ? 'set' : 'missing'} installationId=${config.github.installationId ? 'set' : 'missing'} privateKey=${config.github.privateKey ? 'set(' + config.github.privateKey.length + ' chars)' : 'missing'}`)
+  logger.info(`initGitHub: hasApp=${hasApp} appId=${config.github.appId ? 'set' : 'missing'} installationId=${config.github.installationId ? 'set' : 'missing'} privateKey=${config.github.privateKey ? 'set(' + config.github.privateKey.length + ' chars)' : 'missing'}`)
 
   if (hasApp) {
     appOctokit = new Octokit({
@@ -28,10 +29,10 @@ export function initGitHub(config: Config): void {
         installationId: parseInt(config.github.installationId!, 10)
       }
     })
-    console.log('[github] appOctokit initialized — comments will post as bot')
+    logger.info('appOctokit initialized — comments will post as bot')
   } else {
     appOctokit = null
-    console.log('[github] appOctokit NOT initialized — comments will post as user')
+    logger.info('appOctokit NOT initialized — comments will post as user')
   }
 }
 
@@ -140,7 +141,7 @@ export async function ensureLabelsExist(): Promise<void> {
           color: color
         })
       } catch (err) {
-        console.error(`Failed to create label ${labelName}:`, err)
+        logger.error(`Failed to create label ${labelName}: ${err instanceof Error ? err.message : String(err)}`)
       }
     }
   }
