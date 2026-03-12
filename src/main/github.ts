@@ -53,6 +53,7 @@ function mapIssue(issue: {
   number: number; title: string; body?: string | null; html_url: string
   state: string; created_at: string; updated_at: string
   user?: { login?: string; id?: number; avatar_url?: string } | null
+  assignees?: Array<{ login?: string; id?: number; avatar_url?: string }> | null
   labels: Array<string | { name?: string | null; color?: string | null }>
 }): GitHubIssue {
   return {
@@ -68,6 +69,11 @@ function mapIssue(issue: {
       id: issue.user?.id ?? 0,
       avatar_url: issue.user?.avatar_url ?? ''
     },
+    assignees: (issue.assignees ?? []).map((a) => ({
+      login: a.login ?? '',
+      id: a.id ?? 0,
+      avatar_url: a.avatar_url ?? ''
+    })),
     labels: issue.labels.map((l) => ({
       name: typeof l === 'string' ? l : (l.name ?? ''),
       color: typeof l === 'string' ? '' : (l.color ?? '')
@@ -219,6 +225,17 @@ export async function getNewComments(
   }
 
   return comments.slice(sinceIdx + 1)
+}
+
+export async function assignIssue(issueNumber: number, assignee: string): Promise<void> {
+  const oc = getOctokit()
+  const cfg = getConfig()
+  await oc.issues.addAssignees({
+    owner: cfg.github.owner,
+    repo: cfg.github.repo,
+    issue_number: issueNumber,
+    assignees: [assignee]
+  })
 }
 
 export async function getInstallationToken(): Promise<string | null> {

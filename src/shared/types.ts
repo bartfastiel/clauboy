@@ -36,6 +36,7 @@ export interface GitHubIssue {
   created_at: string
   updated_at: string
   user: GitHubUser
+  assignees: GitHubUser[]
   labels: Array<{ name: string; color: string }>
 }
 
@@ -75,8 +76,6 @@ export interface IssueState {
   agentActivity: 'waiting' | 'working' | null
   agentElapsedSeconds: number | null
   agentElapsedCapturedAt: string | null
-  /** GitHub login of whoever added the 'clauboy' label (null = not yet determined) */
-  labeledBy: string | null
 }
 
 export interface AppState {

@@ -23,9 +23,17 @@ type RowState =
 function getRowState(issueState: IssueState | null, trustedUser: string): RowState {
   if (!issueState) return { kind: 'idle' }
 
-  const isColleague = !!issueState.labeledBy && issueState.labeledBy !== trustedUser
-  if (isColleague) {
-    return { kind: 'colleague', login: issueState.labeledBy!, labels: issueState.clauboyLabels }
+  const assigneeLogins = issueState.issue.assignees.map((a) => a.login)
+  const hasClauboy = issueState.clauboyLabels.includes('clauboy')
+  const isMine = assigneeLogins.includes(trustedUser)
+  const isUnassigned = assigneeLogins.length === 0
+
+  // Unassigned clauboy issue — treat as idle/grabbable
+  if (hasClauboy && isUnassigned) return { kind: 'idle' }
+
+  // Assigned to someone else
+  if (hasClauboy && !isMine) {
+    return { kind: 'colleague', login: assigneeLogins[0], labels: issueState.clauboyLabels }
   }
 
   if (issueState.containerStatus === 'error') {
@@ -390,6 +398,8 @@ export default function DashboardApp(): React.ReactElement {
               state={state}
               onClick={() => window.clauboy.openAgent(issueState.issue.number).catch(console.error)}
               onRetry={state.kind === 'failed' ? () => window.clauboy.retryAgent(issueState.issue.number).catch(console.error) : undefined}
+              onStart={() => void handleStartIssue(issueState.issue.number)}
+              starting={startingIssue === issueState.issue.number}
             />
           )
         })}

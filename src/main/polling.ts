@@ -1,6 +1,5 @@
 import {
   fetchClauboyIssues,
-  getLabelEvents,
   getInstallationToken
 } from './github'
 import { spawn } from 'child_process'
@@ -161,8 +160,7 @@ async function runPollTick(): Promise<void> {
         loadingStep: null,
         agentActivity: null,
         agentElapsedSeconds: null,
-        agentElapsedCapturedAt: null,
-        labeledBy: null
+        agentElapsedCapturedAt: null
       }
 
       // Update issue data
@@ -180,18 +178,9 @@ async function runPollTick(): Promise<void> {
         issueState.terminalPort = TERMINAL_PORT_BASE + issue.number
       }
 
-      // Determine who added the 'clauboy' label (cached — only fetch once per issue)
-      if (!issueState.labeledBy && clauboyLabels.includes('clauboy')) {
-        logger.info(`Issue #${issue.number}: checking label events to determine who labeled it`)
-        const events = await getLabelEvents(issue.number)
-        const labelEvent = events
-          .filter((e) => e.event === 'labeled' && e.label?.name === 'clauboy')
-          .pop()
-        issueState.labeledBy = labelEvent?.actor?.login ?? 'unknown'
-        logger.info(`Issue #${issue.number}: labeled by "${issueState.labeledBy}"`)
-      }
-
-      const isMine = issueState.labeledBy === config.github.trustedUser
+      const assigneeLogins = issue.assignees.map((a) => a.login)
+      const isMine = assigneeLogins.includes(config.github.trustedUser)
+      const isUnassigned = assigneeLogins.length === 0
 
       // Check if we should start a container (trusted user added clauboy label)
       const shouldConsiderStart =
@@ -200,12 +189,14 @@ async function runPollTick(): Promise<void> {
         !clauboyLabels.includes('clauboy:done') &&
         (issueState.containerStatus === 'none' || issueState.containerStatus === 'stopped')
 
-      logger.debug(`Issue #${issue.number} shouldConsiderStart=${shouldConsiderStart} isMine=${isMine} (containerStatus=${issueState.containerStatus})`)
+      logger.debug(`Issue #${issue.number} shouldConsiderStart=${shouldConsiderStart} isMine=${isMine} isUnassigned=${isUnassigned} (containerStatus=${issueState.containerStatus})`)
 
-      if (shouldConsiderStart && !isMine) {
-        logger.info(`Issue #${issue.number}: labeled by "${issueState.labeledBy}" (not trusted user "${config.github.trustedUser}") — skipping`)
+      if (shouldConsiderStart && isUnassigned) {
+        logger.debug(`Issue #${issue.number}: no assignee — waiting to be grabbed`)
+      } else if (shouldConsiderStart && !isMine) {
+        logger.info(`Issue #${issue.number}: assigned to [${assigneeLogins.join(', ')}] (not "${config.github.trustedUser}") — skipping`)
       } else if (shouldConsiderStart && isMine) {
-        logger.info(`Issue #${issue.number}: trusted user "${issueState.labeledBy}" — starting agent`)
+        logger.info(`Issue #${issue.number}: assigned to "${config.github.trustedUser}" — starting agent`)
 
         // Start the agent — show progress without pushing to issueStates twice
         issueState.loadingStep = 'Starting container...'

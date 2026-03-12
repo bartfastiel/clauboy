@@ -28,7 +28,7 @@ import * as fs from 'fs'
 import { forceSync, startPolling, startActivityPolling } from './polling'
 import { logger } from './logger'
 import { cloneRepo } from './worktree'
-import { setLabel, postComment, buildCreateIssueUrl, initGitHub, fetchAllOpenIssues } from './github'
+import { setLabel, assignIssue, postComment, buildCreateIssueUrl, initGitHub, fetchAllOpenIssues } from './github'
 import { createGithubAppViaManifest, getInstallationId } from './github-app-manifest'
 
 export function registerIpcHandlers(): void {
@@ -229,9 +229,11 @@ export function registerIpcHandlers(): void {
   // List all open issues (for browse/label UI)
   ipcMain.handle(IPC.GITHUB_LIST_ALL_ISSUES, () => fetchAllOpenIssues())
 
-  // Add clauboy label to an issue and sync
+  // Add clauboy label + assign to trusted user, then sync
   ipcMain.handle(IPC.GITHUB_LABEL_ISSUE, async (_event, issueNumber: number) => {
+    const cfg = loadConfig()
     await setLabel(issueNumber, ['clauboy'], [])
+    await assignIssue(issueNumber, cfg.github.trustedUser)
     await forceSync()
     return true
   })
