@@ -31,8 +31,13 @@ async function startupSync(): Promise<void> {
       runningContainers.map((c) => [c.issueNumber, c])
     )
 
+    // Restore persisted state so we don't lose worktreePath, containerId, etc. across restarts
+    const persisted = appState.restoreFromDisk()
+    const persistedMap = new Map(persisted.map((s) => [s.issue.number, s]))
+
     const issueStates: IssueState[] = issues.map((issue) => {
       const container = containerMap.get(issue.number)
+      const prev = persistedMap.get(issue.number)
       const clauboyLabels = issue.labels
         .map((l) => l.name)
         .filter((name) =>
@@ -49,12 +54,12 @@ async function startupSync(): Promise<void> {
 
       return {
         issue,
-        containerId: container?.id ?? null,
+        containerId: container?.id ?? prev?.containerId ?? null,
         containerStatus,
-        worktreePath: null,
+        worktreePath: prev?.worktreePath ?? null,
         terminalPort: container && containerStatus === 'running' ? 37680 + issue.number : null,
         clauboyLabels,
-        lastKnownCommentId: null,
+        lastKnownCommentId: prev?.lastKnownCommentId ?? null,
         loadingStep: null,
         agentActivity: null,
         agentElapsedSeconds: null,
