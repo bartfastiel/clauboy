@@ -4,12 +4,12 @@ import {
 } from './github'
 import { spawn } from 'child_process'
 import { appState } from './state'
-import * as path from 'path'
 import * as fs from 'fs'
 import { startContainer, listRunningContainers, captureAgentPane, TERMINAL_PORT_BASE, imageExists, pullImage } from './docker'
 import { loadConfig } from './config'
 import { ClauboyLabel, IssueState } from '../shared/types'
 import { logger } from './logger'
+import { worktreePath } from './worktree'
 
 let pollingInterval: ReturnType<typeof setInterval> | null = null
 let activityInterval: ReturnType<typeof setInterval> | null = null
@@ -54,7 +54,9 @@ function parseElapsedSeconds(text: string): number | null {
 async function refreshAgentActivity(): Promise<void> {
   const issues = appState.getState().issues.filter((i) => i.containerStatus === 'running')
   for (const issueState of issues) {
-    refreshContainerToken(issueState.issue.number).catch(() => {})
+    refreshContainerToken(issueState.issue.number).catch((err) =>
+      logger.debug(`Issue #${issueState.issue.number}: token refresh failed — ${err instanceof Error ? err.message : String(err)}`)
+    )
     try {
       const pane = await captureAgentPane(issueState.issue.number)
       // eslint-disable-next-line no-control-regex
@@ -111,13 +113,22 @@ export async function forceSync(): Promise<void> {
   await runPollTick()
 }
 
+const POLL_TIMEOUT_MS = 120_000 // 2 minutes — release the lock if a tick hangs
+let pollStartedAt = 0
+
 async function runPollTick(): Promise<void> {
+  // Release a stuck lock if the previous tick exceeded the timeout
+  if (isPolling && pollStartedAt > 0 && Date.now() - pollStartedAt > POLL_TIMEOUT_MS) {
+    logger.warn(`Poll tick timeout — previous tick started ${Math.round((Date.now() - pollStartedAt) / 1000)}s ago, forcing unlock`)
+    isPolling = false
+  }
   if (isPolling) return
   if (Date.now() < rateLimitBackoffUntil) {
     logger.warn(`Poll tick skipped — rate limit backoff until ${new Date(rateLimitBackoffUntil).toISOString()}`)
     return
   }
   isPolling = true
+  pollStartedAt = Date.now()
 
   try {
     appState.setState({ isSyncing: true })
@@ -125,7 +136,10 @@ async function runPollTick(): Promise<void> {
     logger.debug(`Poll tick — trustedUser=${config.github.trustedUser} repo=${config.github.owner}/${config.github.repo}`)
 
     // Reconcile actual Docker state before processing issues
-    const runningContainers = await listRunningContainers().catch(() => [])
+    const runningContainers = await listRunningContainers().catch((err) => {
+      logger.debug(`Docker container list failed — ${err instanceof Error ? err.message : String(err)}`)
+      return []
+    })
     const runningIssueNumbers = new Set(
       runningContainers.filter((c) => c.status === 'running').map((c) => c.issueNumber)
     )
@@ -208,12 +222,7 @@ async function runPollTick(): Promise<void> {
         }
 
         try {
-          const wsPath = path.join(
-            config.cloneDir ?? '',
-            `${config.github.owner}-${config.github.repo}`,
-            'workspaces',
-            `issue-${issue.number}`
-          )
+          const wsPath = worktreePath(config, issue.number)
           fs.mkdirSync(wsPath, { recursive: true })
           logger.info(`Issue #${issue.number}: workspace path="${wsPath}"`)
           issueState.worktreePath = wsPath
