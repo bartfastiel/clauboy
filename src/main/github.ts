@@ -252,40 +252,6 @@ export async function getInstallationToken(): Promise<string | null> {
   }
 }
 
-export async function getLabelEvents(issueNumber: number): Promise<
-  Array<{
-    event: string
-    label?: { name: string }
-    actor?: { login: string }
-    created_at: string
-  }>
-> {
-  const oc = getOctokit()
-  const cfg = getConfig()
-
-  const response = await oc.issues.listEventsForTimeline({
-    owner: cfg.github.owner,
-    repo: cfg.github.repo,
-    issue_number: issueNumber,
-    per_page: 100
-  })
-
-  return response.data
-    .filter((e): e is typeof e & { event: string } => e.event === 'labeled' || e.event === 'unlabeled')
-    .map((e) => ({
-      event: e.event,
-      label:
-        'label' in e && e.label
-          ? { name: (e.label as { name: string }).name }
-          : undefined,
-      actor:
-        'actor' in e && e.actor
-          ? { login: (e.actor as { login: string }).login }
-          : undefined,
-      created_at: 'created_at' in e ? String(e.created_at) : ''
-    }))
-}
-
 export function buildCreateIssueUrl(
   config: Config,
   title?: string,
