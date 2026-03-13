@@ -5,15 +5,13 @@ const DUMMY_ISSUE = {
   number: 42,
   title: 'Example Issue',
   html_url: 'https://github.com/owner/repo/issues/42',
-  body: 'This is an example issue body.',
-  worktreePath: '/home/user/.clauboy/repos/owner-repo/worktrees/issue-42'
+  body: 'This is an example issue body.'
 }
 
 function expandPreview(template: string): string {
   return template
     .replace(/\{\{ISSUE_NUMBER\}\}/g, String(DUMMY_ISSUE.number))
     .replace(/\{\{ISSUE_URL\}\}/g, DUMMY_ISSUE.html_url)
-    .replace(/\{\{WORKTREE_PATH\}\}/g, DUMMY_ISSUE.worktreePath)
     .replace(/\{\{ISSUE_TITLE\}\}/g, '')
     .replace(/\{\{ISSUE_BODY\}\}/g, '')
 }
@@ -151,7 +149,6 @@ export default function ButtonEditorApp(): React.ReactElement {
                 <label>Type</label>
                 <select value={selectedButton.type} onChange={(e) => updateSelected({ type: e.target.value as ButtonType })}>
                   <option value="prompt">Prompt (inject into terminal)</option>
-                  <option value="ide">IDE (open editor)</option>
                   <option value="web">Web (open browser)</option>
                   <option value="teardown">Teardown (stop agent)</option>
                 </select>
@@ -164,7 +161,7 @@ export default function ButtonEditorApp(): React.ReactElement {
                     value={selectedButton.prompt ?? ''}
                     onChange={(e) => updateSelected({ prompt: e.target.value })}
                     style={{ minHeight: '120px', fontFamily: 'monospace', fontSize: '12px' }}
-                    placeholder="Use {{ISSUE_NUMBER}}, {{ISSUE_URL}}, {{WORKTREE_PATH}}"
+                    placeholder="Use {{ISSUE_NUMBER}}, {{ISSUE_URL}}"
                   />
                   {selectedButton.prompt && (
                     <div style={{ marginTop: '8px' }}>
@@ -174,13 +171,6 @@ export default function ButtonEditorApp(): React.ReactElement {
                       </div>
                     </div>
                   )}
-                </div>
-              )}
-
-              {selectedButton.type === 'ide' && (
-                <div className="form-group">
-                  <label>Editor Command (overrides global)</label>
-                  <input value={selectedButton.command ?? ''} onChange={(e) => updateSelected({ command: e.target.value })} placeholder="code" />
                 </div>
               )}
 

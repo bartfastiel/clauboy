@@ -9,7 +9,7 @@ export interface LogEntry {
 }
 
 
-export type ButtonType = 'prompt' | 'ide' | 'web' | 'teardown'
+export type ButtonType = 'prompt' | 'web' | 'teardown'
 
 export interface Button {
   id: string
@@ -66,7 +66,6 @@ export interface IssueState {
   issue: GitHubIssue
   containerId: string | null
   containerStatus: ContainerStatus
-  worktreePath: string | null
   terminalPort: number | null
   clauboyLabels: ClauboyLabel[]
   lastKnownCommentId: number | null
@@ -81,7 +80,6 @@ export interface IssueState {
 export interface AppState {
   isOnboarding: boolean
   issues: IssueState[]
-  orphanWorktrees: string[]
   isSyncing: boolean
   lastSyncAt: string | null
 }
@@ -146,12 +144,10 @@ export const IPC = {
   GITHUB_LABEL_ISSUE: 'github:label-issue',
   AGENT_RETRY: 'agent:retry',
   SYSTEM_OPEN_EXTERNAL: 'system:open-external',
-  SYSTEM_OPEN_IN_EDITOR: 'system:open-in-editor',
   SYSTEM_CONFIRM: 'system:confirm',
   ONBOARDING_COMPLETE: 'onboarding:complete',
   AGENT_AUTH_TERMINAL: 'agent:auth-terminal',
   AGENT_TERMINAL_URL: 'agent:terminal-url',
-  AGENT_CLEANUP_ORPHAN: 'agent:cleanup-orphan',
   LOG_DATA: 'log:data',
   CONFIG_UPDATE: 'config:update',
   DOCKER_CONTAINER_LOGS: 'docker:container-logs'
@@ -191,13 +187,6 @@ export const DEFAULT_BUTTONS: Button[] = [
     type: 'prompt',
     prompt:
       'Erstelle einen Pull Request für Issue #{{ISSUE_NUMBER}}. Commitiere alle Änderungen, pushe den Branch und erstelle den PR mit `gh pr create`.'
-  },
-  {
-    id: 'ide',
-    icon: '🖥️',
-    label: 'IDE',
-    type: 'ide',
-    command: 'code'
   },
   {
     id: 'issue',

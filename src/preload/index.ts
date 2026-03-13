@@ -106,9 +106,6 @@ const clauboyAPI = {
   openExternal: (url: string): Promise<void> =>
     ipcRenderer.invoke(IPC.SYSTEM_OPEN_EXTERNAL, url),
 
-  openInEditor: (filePath: string, command?: string): Promise<void> =>
-    ipcRenderer.invoke(IPC.SYSTEM_OPEN_IN_EDITOR, filePath, command),
-
   confirm: (message: string): Promise<boolean> =>
     ipcRenderer.invoke(IPC.SYSTEM_CONFIRM, message),
 
@@ -123,9 +120,6 @@ const clauboyAPI = {
 
   getTerminalUrl: (issueNumber: number): Promise<string> =>
     ipcRenderer.invoke(IPC.AGENT_TERMINAL_URL, issueNumber),
-
-  cleanupOrphan: (worktreePath: string): Promise<boolean> =>
-    ipcRenderer.invoke(IPC.AGENT_CLEANUP_ORPHAN, worktreePath),
 
   onConfigUpdate: (cb: (config: Config) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, config: Config): void => cb(config)

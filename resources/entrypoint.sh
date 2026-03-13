@@ -19,16 +19,18 @@ fi
 GIT_TOKEN="${GITHUB_PAT:-$GH_TOKEN}"
 git config --global credential.helper "!f() { echo username=x-access-token; echo password=${GIT_TOKEN}; }; f"
 
-# Clone repo into /workspace if empty
+# Clone repo into /workspace (shallow clone for speed + isolation)
 if [ -z "$(ls -A /workspace 2>/dev/null)" ] && [ -n "$GITHUB_OWNER" ] && [ -n "$GITHUB_REPO" ]; then
-    echo "[clauboy] Cloning ${GITHUB_OWNER}/${GITHUB_REPO}..."
-    git clone "https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}.git" /workspace
+    echo "[clauboy] Cloning ${GITHUB_OWNER}/${GITHUB_REPO} (shallow)..."
+    git clone --depth 1 "https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}.git" /workspace
     echo "[clauboy] Clone complete"
 fi
 
 # Checkout or create issue branch
-if [ -n "$ISSUE_NUMBER" ] && [ -d "/workspace/.git" ]; then
+if [ -n "$ISSUE_NUMBER" ] && [ -e "/workspace/.git" ]; then
     cd /workspace
+    # Unshallow enough to branch off; fetch the issue branch if it exists remotely
+    git fetch --unshallow 2>/dev/null || true
     git fetch origin "issue-${ISSUE_NUMBER}" 2>/dev/null || true
     git checkout "issue-${ISSUE_NUMBER}" 2>/dev/null \
         || git checkout -b "issue-${ISSUE_NUMBER}"

@@ -269,14 +269,6 @@ export default function DashboardApp(): React.ReactElement {
     if (showAll) { setAllIssues(null); loadAllIssues() }
   }
 
-  const handleCleanupOrphan = (worktreePath: string): void => {
-    window.clauboy.confirm(`Remove orphan worktree?\n${worktreePath}`)
-      .then((confirmed) => {
-        if (confirmed) window.clauboy.cleanupOrphan(worktreePath).catch(console.error)
-      })
-      .catch(console.error)
-  }
-
   if (!appState) {
     return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)' }}>Loading...</div>
   }
@@ -353,19 +345,6 @@ export default function DashboardApp(): React.ReactElement {
         {appState.isSyncing && <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>⟳</span>}
         <button className="icon-btn" onClick={() => window.clauboy.openSettings().catch(console.error)} title={t('settings')}>⚙</button>
       </div>
-
-      {/* Orphan warnings */}
-      {appState.orphanWorktrees.length > 0 && (
-        <div style={{ padding: '8px 16px', background: 'rgba(255,167,38,0.1)', borderBottom: '1px solid rgba(255,167,38,0.3)' }}>
-          {appState.orphanWorktrees.map((wtPath) => (
-            <div key={wtPath} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
-              <span>⚠️ Orphan:</span>
-              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-secondary)' }}>{wtPath}</span>
-              <button style={{ fontSize: '11px', padding: '2px 8px' }} onClick={() => handleCleanupOrphan(wtPath)}>{t('cleanup')}</button>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Warn/error log banner */}
       {visibleLogs.length > 0 && (

@@ -12,7 +12,6 @@ class StateManager extends EventEmitter {
   private state: AppState = {
     isOnboarding: true,
     issues: [],
-    orphanWorktrees: [],
     isSyncing: false,
     lastSyncAt: null
   }

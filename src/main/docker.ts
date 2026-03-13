@@ -68,7 +68,6 @@ export async function imageExists(imageName: string): Promise<boolean> {
 export async function startContainer(
   issueNumber: number,
   config: Config,
-  worktreePath: string,
   issueTitle = ''
 ): Promise<string> {
   const d = getDocker()
@@ -104,9 +103,6 @@ export async function startContainer(
   env.push(`GITHUB_PAT=${config.github.token}`)
   env.push(`GITHUB_OWNER=${config.github.owner}`)
   env.push(`GITHUB_REPO=${config.github.repo}`)
-
-  // Ensure absolute path and convert Windows backslashes for Docker
-  const absoluteWtPath = path.resolve(worktreePath).replace(/\\/g, '/')
 
   const claudeAuthDir = path.join(os.homedir(), '.clauboy', 'claude-auth')
   fs.mkdirSync(claudeAuthDir, { recursive: true })
@@ -147,7 +143,6 @@ export async function startContainer(
   }
 
   const binds = [
-    `${absoluteWtPath}:/workspace`,
     `${claudeAuthDir.replace(/\\/g, '/')}:/home/agent/.claude`
   ]
   const normalizedAuthClaudeJson = path.resolve(authClaudeJson).replace(/\\/g, '/')
@@ -187,7 +182,7 @@ export async function startContainer(
     }
   })
 
-  logger.info(`Docker: creating container "${containerName}" image="${config.docker.imageName}" worktree="${absoluteWtPath}"`)
+  logger.info(`Docker: creating container "${containerName}" image="${config.docker.imageName}"`)
   await container.start()
   const startInfo = await container.inspect()
   logger.info(`Docker: container "${containerName}" started — id=${container.id.slice(0, 12)} status=${startInfo.State.Status}`)

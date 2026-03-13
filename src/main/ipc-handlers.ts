@@ -1,5 +1,4 @@
 import { ipcMain, dialog, shell, BrowserWindow } from 'electron'
-import { spawn } from 'child_process'
 import { IPC, Config } from '../shared/types'
 import { Octokit } from '@octokit/rest'
 import { loadConfig, saveConfig } from './config'
@@ -23,8 +22,6 @@ import {
   getTerminalPort,
   getContainerLogs
 } from './docker'
-import { removeWorktree } from './worktree'
-import * as fs from 'fs'
 import { forceSync, startPolling, startActivityPolling } from './polling'
 import { logger } from './logger'
 import { cloneRepo } from './worktree'
@@ -86,8 +83,6 @@ export function registerIpcHandlers(): void {
     const state = appState.getState()
     const issueState = state.issues.find((i) => i.issue.number === issueNumber)
 
-    const config = loadConfig()
-
     // Step 2: Stop container — try by stored ID first, fall back to well-known name
     if (issueState?.containerId) {
       await stopContainer(issueState.containerId)
@@ -95,26 +90,21 @@ export function registerIpcHandlers(): void {
       await stopContainer(`clauboy-issue-${issueNumber}`)
     }
 
-    // Step 3: Remove worktree
-    await removeWorktree(config, issueNumber).catch((err) =>
-      logger.error(`Issue #${issueNumber}: removeWorktree failed: ${err}`)
-    )
-
-    // Step 4: Remove ALL clauboy labels so issue disappears from the list
+    // Step 3: Remove ALL clauboy labels so issue disappears from the list
     await setLabel(issueNumber, [], ['clauboy', 'clauboy:running', 'clauboy:done', 'clauboy:error'])
 
-    // Step 5: Post bot comment
+    // Step 4: Post bot comment
     await postComment(issueNumber, '🤠 Agent done.').catch((err) =>
       logger.error(`Issue #${issueNumber}: failed to post teardown comment: ${err}`)
     )
 
-    // Step 6: Close agent window first so user sees immediate feedback
+    // Step 5: Close agent window first so user sees immediate feedback
     closeAgentWindow(issueNumber)
 
-    // Step 7: Remove issue from state so it vanishes from the dashboard
+    // Step 6: Remove issue from state so it vanishes from the dashboard
     appState.removeIssue(issueNumber)
 
-    // Step 8: Refetch issues from GitHub after a delay (let label removal propagate)
+    // Step 7: Refetch issues from GitHub after a delay (let label removal propagate)
     setTimeout(() => void forceSync(), 3000)
   })
 
@@ -174,15 +164,6 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IPC.SYSTEM_OPEN_EXTERNAL, (_event, url: string) => {
     shell.openExternal(url)
   })
-
-  ipcMain.handle(
-    IPC.SYSTEM_OPEN_IN_EDITOR,
-    (_event, filePath: string, command?: string) => {
-      const cmd = command ?? 'code'
-      const proc = spawn(cmd, [filePath], { shell: true, detached: true })
-      proc.unref()
-    }
-  )
 
   ipcMain.handle(IPC.SYSTEM_CONFIRM, async (_event, message: string) => {
     const result = await dialog.showMessageBox({
@@ -268,25 +249,6 @@ export function registerIpcHandlers(): void {
   // Fetch docker container logs
   ipcMain.handle(IPC.DOCKER_CONTAINER_LOGS, async (_event, issueNumber: number) => {
     return getContainerLogs(issueNumber)
-  })
-
-  // Clean up an orphan worktree (stop any stray container + remove filesystem path)
-  ipcMain.handle(IPC.AGENT_CLEANUP_ORPHAN, async (_event, worktreePath: string) => {
-    // Extract issue number from path if possible and stop a stray container
-    const match = worktreePath.match(/issue-(\d+)/)
-    if (match) {
-      const issueNumber = parseInt(match[1], 10)
-      await stopContainer(`clauboy-issue-${issueNumber}`).catch((err) =>
-        logger.debug(`Orphan cleanup: failed to stop container for issue #${issueNumber} — ${err instanceof Error ? err.message : String(err)}`)
-      )
-    }
-    if (fs.existsSync(worktreePath)) {
-      fs.rmSync(worktreePath, { recursive: true, force: true })
-    }
-    appState.setState({
-      orphanWorktrees: appState.getState().orphanWorktrees.filter((p) => p !== worktreePath)
-    })
-    return true
   })
 
 }

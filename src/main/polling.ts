@@ -4,12 +4,10 @@ import {
 } from './github'
 import { spawn } from 'child_process'
 import { appState } from './state'
-import * as fs from 'fs'
 import { startContainer, listRunningContainers, captureAgentPane, TERMINAL_PORT_BASE, imageExists, pullImage } from './docker'
 import { loadConfig } from './config'
 import { ClauboyLabel, IssueState } from '../shared/types'
 import { logger } from './logger'
-import { worktreePath } from './worktree'
 
 let pollingInterval: ReturnType<typeof setInterval> | null = null
 let activityInterval: ReturnType<typeof setInterval> | null = null
@@ -167,7 +165,6 @@ async function runPollTick(): Promise<void> {
         issue,
         containerId: null,
         containerStatus: 'none',
-        worktreePath: null,
         terminalPort: null,
         clauboyLabels,
         lastKnownCommentId: null,
@@ -222,13 +219,6 @@ async function runPollTick(): Promise<void> {
         }
 
         try {
-          const wsPath = worktreePath(config, issue.number)
-          fs.mkdirSync(wsPath, { recursive: true })
-          logger.info(`Issue #${issue.number}: workspace path="${wsPath}"`)
-          issueState.worktreePath = wsPath
-          issueState.loadingStep = 'Starting container...'
-          appState.updateIssue(issue.number, issueState)
-
           // Auto-pull image if not available locally
           const hasImage = await imageExists(config.docker.imageName)
           if (!hasImage) {
@@ -241,8 +231,8 @@ async function runPollTick(): Promise<void> {
 
           issueState.loadingStep = 'Starting container...'
           appState.updateIssue(issue.number, issueState)
-          logger.info(`Issue #${issue.number}: starting Docker container with workspace="${wsPath}" image="${config.docker.imageName}"`)
-          const containerId = await startContainer(issue.number, config, wsPath, issue.title)
+          logger.info(`Issue #${issue.number}: starting Docker container image="${config.docker.imageName}"`)
+          const containerId = await startContainer(issue.number, config, issue.title)
           logger.info(`Issue #${issue.number}: container started id=${containerId.slice(0, 12)}`)
           issueState.containerId = containerId
           issueState.containerStatus = 'running'

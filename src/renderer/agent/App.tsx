@@ -4,7 +4,6 @@ import { useI18n } from '../shared/useI18n'
 
 const LOADING_STEPS = [
   'Connecting to GitHub...',
-  'Creating worktree...',
   'Pulling image...',
   'Starting container...',
   'Launching Claude Code...'
@@ -17,7 +16,6 @@ function expandTemplateVars(
   return template
     .replace(/\{\{ISSUE_NUMBER\}\}/g, String(issueState.issue.number))
     .replace(/\{\{ISSUE_URL\}\}/g, issueState.issue.html_url)
-    .replace(/\{\{WORKTREE_PATH\}\}/g, issueState.worktreePath ?? '')
     // {{ISSUE_TITLE}} and {{ISSUE_BODY}} are intentionally NOT expanded here —
     // injecting untrusted issue content into the Claude session is a prompt-injection risk.
     .replace(/\{\{ISSUE_TITLE\}\}/g, '')
@@ -285,12 +283,6 @@ export default function AgentApp(): React.ReactElement {
         if (btn.prompt) {
           const expanded = expandTemplateVars(btn.prompt, issueState)
           window.clauboy.injectPrompt(issueNumber, expanded).catch(console.error)
-        }
-        break
-
-      case 'ide':
-        if (issueState.worktreePath) {
-          window.clauboy.openInEditor(issueState.worktreePath, btn.command ?? config.editorCommand).catch(console.error)
         }
         break
 
