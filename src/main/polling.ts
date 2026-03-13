@@ -1,10 +1,11 @@
 import {
   fetchClauboyIssues,
-  getInstallationToken
+  getInstallationToken,
+  getNewComments
 } from './github'
 import { spawn } from 'child_process'
 import { appState } from './state'
-import { startContainer, listRunningContainers, captureAgentPane, TERMINAL_PORT_BASE, imageExists, pullImage } from './docker'
+import { startContainer, listRunningContainers, captureAgentPane, TERMINAL_PORT_BASE, imageExists, pullImage, runAgentPrompt } from './docker'
 import { loadConfig } from './config'
 import { ClauboyLabel, IssueState } from '../shared/types'
 import { logger } from './logger'
@@ -249,6 +250,36 @@ async function runPollTick(): Promise<void> {
         }
       }
 
+
+      // Notify agent about new human comments (ignore bot comments to prevent feedback loops)
+      if (issueState.containerStatus === 'running') {
+        try {
+          const newComments = await getNewComments(
+            issue.number,
+            issueState.lastKnownCommentId
+          )
+
+          // Filter out bot comments (GitHub App bots have logins ending with [bot])
+          const humanComments = newComments.filter((c) => !c.user.login.endsWith('[bot]'))
+
+          if (newComments.length > 0) {
+            // Always advance the cursor past all comments (including bot ones)
+            issueState.lastKnownCommentId = newComments[newComments.length - 1].id
+          }
+
+          if (humanComments.length > 0) {
+            logger.info(`Issue #${issue.number}: ${humanComments.length} new human comment(s), notifying agent via tmux`)
+            await runAgentPrompt(
+              issue.number,
+              `Es gibt neue Aktivität in Issue #${issue.number}. Bitte lies die aktuellen Kommentare via GitHub CLI und entscheide selbst wie du reagierst.`
+            ).catch((err) =>
+              logger.debug(`Issue #${issue.number}: failed to notify agent — ${err instanceof Error ? err.message : String(err)}`)
+            )
+          }
+        } catch (err) {
+          logger.debug(`Issue #${issue.number}: comment check failed — ${err instanceof Error ? err.message : String(err)}`)
+        }
+      }
 
       issueStates.push(issueState)
     }
