@@ -67,5 +67,7 @@ RUN mkdir -p /home/agent/.claude && \
       '}' > /home/agent/.claude/settings.json
 
 EXPOSE 7681
+# Dev server ports (3000-3009) — bound to 127.0.0.1 on host via docker run
+EXPOSE 3000-3009
 
 ENTRYPOINT ["/entrypoint.sh"]

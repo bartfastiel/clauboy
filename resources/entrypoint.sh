@@ -37,6 +37,27 @@ if [ -n "$ISSUE_NUMBER" ] && [ -e "/workspace/.git" ]; then
     echo "[clauboy] Checked out branch issue-${ISSUE_NUMBER}"
 fi
 
+# Inject dev-port instructions into workspace CLAUDE.md so the agent knows which ports to use
+if [ -n "$DEV_PORTS" ] && [ -n "$DEV_PORTS_HOST_BASE" ]; then
+    DEV_BLOCK="
+
+# Dev Server Ports
+When starting dev/test servers, use ports ${DEV_PORTS} (e.g. 3000).
+These are mapped to the host — the user can access them in their browser.
+Port mapping: container port 3000+N → host http://localhost:\$((DEV_PORTS_HOST_BASE + N))
+Example: port 3000 → http://localhost:${DEV_PORTS_HOST_BASE}
+         port 3001 → http://localhost:$((DEV_PORTS_HOST_BASE + 1))
+Always tell the user the host URL when you start a server."
+    if [ -f /workspace/CLAUDE.md ]; then
+        # Append only if not already present
+        if ! grep -q "Dev Server Ports" /workspace/CLAUDE.md; then
+            echo "$DEV_BLOCK" >> /workspace/CLAUDE.md
+        fi
+    else
+        echo "$DEV_BLOCK" > /workspace/CLAUDE.md
+    fi
+fi
+
 # Start tmux session with Claude if not already running
 if tmux has-session -t "$SESSION" 2>/dev/null; then
     echo "[clauboy] Resuming existing tmux session: $SESSION"

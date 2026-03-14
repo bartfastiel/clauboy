@@ -9,6 +9,9 @@ import { getInstallationToken } from './github'
 import { logger } from './logger'
 
 export const TERMINAL_PORT_BASE = 37680
+export const DEV_PORT_BASE = 40000
+export const DEV_PORT_COUNT = 10
+export const DEV_PORT_CONTAINER_START = 3000
 
 let docker: Dockerode | null = null
 
@@ -104,6 +107,11 @@ export async function startContainer(
   env.push(`GITHUB_OWNER=${config.github.owner}`)
   env.push(`GITHUB_REPO=${config.github.repo}`)
 
+  // Dev server ports: container 3000-3009 → host 127.0.0.1:4xxxx
+  const devHostBase = DEV_PORT_BASE + issueNumber * DEV_PORT_COUNT
+  env.push(`DEV_PORTS=${DEV_PORT_CONTAINER_START}-${DEV_PORT_CONTAINER_START + DEV_PORT_COUNT - 1}`)
+  env.push(`DEV_PORTS_HOST_BASE=${devHostBase}`)
+
   const claudeAuthDir = path.join(os.homedir(), '.clauboy', 'claude-auth')
   fs.mkdirSync(claudeAuthDir, { recursive: true })
   const settingsFile = path.join(claudeAuthDir, 'settings.json')
@@ -150,12 +158,20 @@ export async function startContainer(
     binds.push(`${normalizedAuthClaudeJson}:/home/agent/.claude.json`)
   }
 
+  // Build port bindings: ttyd + dev server ports (bound to 127.0.0.1 for security)
+  const portBindings: Record<string, Dockerode.PortBinding[]> = {
+    '7681/tcp': [{ HostPort: String(TERMINAL_PORT_BASE + issueNumber) }]
+  }
+  for (let i = 0; i < DEV_PORT_COUNT; i++) {
+    const containerPort = DEV_PORT_CONTAINER_START + i
+    const hostPort = devHostBase + i
+    portBindings[`${containerPort}/tcp`] = [{ HostIp: '127.0.0.1', HostPort: String(hostPort) }]
+  }
+
   const hostConfig: Dockerode.HostConfig = {
     NetworkMode: config.docker.networkName,
     Binds: binds,
-    PortBindings: {
-      '7681/tcp': [{ HostPort: String(TERMINAL_PORT_BASE + issueNumber) }]
-    }
+    PortBindings: portBindings
   }
 
   if (config.docker.memoryLimit) {
@@ -173,7 +189,10 @@ export async function startContainer(
     Env: env,
     WorkingDir: '/workspace',
     ExposedPorts: {
-      '7681/tcp': {}
+      '7681/tcp': {},
+      ...Object.fromEntries(
+        Array.from({ length: DEV_PORT_COUNT }, (_, i) => [`${DEV_PORT_CONTAINER_START + i}/tcp`, {}])
+      )
     },
     HostConfig: hostConfig,
     Labels: {
@@ -235,6 +254,14 @@ export async function runAgentPrompt(
 
 export function getTerminalPort(issueNumber: number): number {
   return TERMINAL_PORT_BASE + issueNumber
+}
+
+export function getDevPortMapping(issueNumber: number): Array<{ container: number; host: number }> {
+  const hostBase = DEV_PORT_BASE + issueNumber * DEV_PORT_COUNT
+  return Array.from({ length: DEV_PORT_COUNT }, (_, i) => ({
+    container: DEV_PORT_CONTAINER_START + i,
+    host: hostBase + i
+  }))
 }
 
 export async function buildImage(
