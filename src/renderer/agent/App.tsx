@@ -193,53 +193,6 @@ function ContainerLogs({ issueNumber, containerStatus }: { issueNumber: number; 
   )
 }
 
-function PromptInput({ issueNumber }: { issueNumber: number }): React.ReactElement {
-  const [text, setText] = useState('')
-  const [sending, setSending] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  const handleSend = (): void => {
-    const trimmed = text.trim()
-    if (!trimmed || sending) return
-    setSending(true)
-    window.clauboy.injectPrompt(issueNumber, trimmed)
-      .then(() => setText(''))
-      .catch(console.error)
-      .finally(() => setSending(false))
-  }
-
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: '6px',
-      padding: '6px 12px', borderTop: '1px solid var(--border)',
-      background: 'var(--bg-secondary)'
-    }}>
-      <input
-        ref={inputRef}
-        type="text"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Enter') handleSend() }}
-        placeholder="Send to terminal…"
-        disabled={sending}
-        style={{
-          flex: 1, fontSize: '12px', padding: '5px 8px',
-          background: 'var(--bg)', border: '1px solid var(--border)',
-          borderRadius: 'var(--radius)', color: 'var(--text)',
-          outline: 'none'
-        }}
-      />
-      <button
-        onClick={handleSend}
-        disabled={!text.trim() || sending}
-        style={{ fontSize: '12px', padding: '4px 10px', opacity: text.trim() ? 1 : 0.4 }}
-      >
-        Send
-      </button>
-    </div>
-  )
-}
-
 export default function AgentApp(): React.ReactElement {
   const [issueNumber] = useState(() => {
     const params = new URLSearchParams(window.location.search)
@@ -331,6 +284,36 @@ export default function AgentApp(): React.ReactElement {
           if (hasXterm) {
             terminalConnected.current = true
             setWebviewFailed(false)
+            // Hide the last N rows (Claude CLI status bar) via clip-path,
+            // and enable Ctrl+V paste via xterm.js
+            wv.executeJavaScript(`
+              (function() {
+                // --- Clip status bar ---
+                var HIDE_ROWS = 3;
+                function applyClip() {
+                  var term = window.term;
+                  if (!term) return;
+                  var cellH;
+                  try { cellH = term._core._renderService.dimensions.css.cell.height; } catch(e) {}
+                  if (!cellH) cellH = (term.options.fontSize || 14) * (term.options.lineHeight || 1);
+                  var el = document.querySelector('.xterm');
+                  if (el) el.style.clipPath = 'inset(0 0 ' + (cellH * HIDE_ROWS) + 'px 0)';
+                }
+                applyClip();
+                if (window.term) window.term.onResize(applyClip);
+                new ResizeObserver(applyClip).observe(document.querySelector('.xterm') || document.body);
+
+                // --- Enable Ctrl+V paste ---
+                document.addEventListener('keydown', function(e) {
+                  if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+                    e.preventDefault();
+                    navigator.clipboard.readText().then(function(text) {
+                      if (window.term && text) window.term.paste(text);
+                    }).catch(function() {});
+                  }
+                });
+              })();
+            `).catch(() => {})
             setTimeout(() => {
               wv.insertCSS('body { opacity: 1 !important; }').catch(() => {})
               setTerminalReady(true)
@@ -495,7 +478,6 @@ export default function AgentApp(): React.ReactElement {
               </div>
             )}
           </div>
-          <PromptInput issueNumber={issueNumber} />
         </>
       ) : issueState.containerStatus === 'error' ? (
         <>

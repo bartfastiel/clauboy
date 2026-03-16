@@ -42,6 +42,9 @@ const clauboyAPI = {
   sendTerminalInput: (issueNumber: number, data: string): void =>
     ipcRenderer.send(IPC.TERMINAL_INPUT, issueNumber, data),
 
+  sendTmuxKeys: (issueNumber: number, ...keys: string[]): Promise<void> =>
+    ipcRenderer.invoke(IPC.TERMINAL_INPUT, issueNumber, ...keys),
+
   resizeTerminal: (issueNumber: number, cols: number, rows: number): void =>
     ipcRenderer.send(IPC.TERMINAL_RESIZE, issueNumber, cols, rows),
 

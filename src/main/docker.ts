@@ -252,6 +252,28 @@ export async function runAgentPrompt(
   })
 }
 
+/** Send raw tmux key(s) without appending Enter — for Ctrl-C, Escape, etc. */
+export async function sendTmuxKeys(
+  issueNumber: number,
+  ...keys: string[]
+): Promise<void> {
+  const containerName = `clauboy-issue-${issueNumber}`
+  logger.info(`Docker: sending raw tmux keys for issue #${issueNumber}: ${keys.join(' ')}`)
+
+  await new Promise<void>((resolve, reject) => {
+    const proc = spawn('docker', [
+      'exec', containerName,
+      'tmux', 'send-keys', '-t', 'claude-agent',
+      ...keys
+    ])
+    proc.on('close', (code) => {
+      if (code === 0) resolve()
+      else reject(new Error(`tmux send-keys (raw) failed with code ${code}`))
+    })
+    proc.on('error', reject)
+  })
+}
+
 export function getTerminalPort(issueNumber: number): number {
   return TERMINAL_PORT_BASE + issueNumber
 }

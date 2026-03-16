@@ -13,6 +13,7 @@ import {
 } from './windows'
 import {
   runAgentPrompt,
+  sendTmuxKeys,
   buildImage,
   pullImage,
   checkDocker,
@@ -59,6 +60,11 @@ export function registerIpcHandlers(): void {
       // With tmux interactive mode, we return quickly — reset after a short delay
       setTimeout(() => appState.updateIssue(issueNumber, { agentIsRunning: false }), 2000)
     }
+  })
+
+  // Raw tmux key sending (Ctrl-C, Escape, etc.) — no trailing Enter
+  ipcMain.handle(IPC.TERMINAL_INPUT, async (_event, issueNumber: number, ...keys: string[]) => {
+    await sendTmuxKeys(issueNumber, ...keys)
   })
 
   // Terminal URL for the ttyd web terminal
