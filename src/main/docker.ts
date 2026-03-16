@@ -415,6 +415,47 @@ export function openAuthTerminal(issueNumber: number): void {
   spawn('cmd.exe', ['/c', 'start', 'cmd.exe', '/k', cmd], { detached: true })
 }
 
+/** Copy a host file into a running container and return the container-internal path. */
+export async function copyFileToContainer(
+  issueNumber: number,
+  hostPath: string,
+  fileName: string
+): Promise<string> {
+  const containerName = `clauboy-issue-${issueNumber}`
+  const containerDir = '/tmp/clauboy-uploads'
+  const containerPath = `${containerDir}/${fileName}`
+
+  // Ensure target directory exists
+  await new Promise<void>((resolve, reject) => {
+    const proc = spawn('docker', ['exec', containerName, 'mkdir', '-p', containerDir])
+    proc.on('close', (code) => (code === 0 ? resolve() : reject(new Error(`mkdir failed (${code})`))))
+    proc.on('error', reject)
+  })
+
+  // docker cp host:path container:path
+  await new Promise<void>((resolve, reject) => {
+    const proc = spawn('docker', ['cp', hostPath, `${containerName}:${containerPath}`])
+    proc.on('close', (code) => {
+      if (code === 0) {
+        logger.info(`Docker: copied "${fileName}" into ${containerName}:${containerPath}`)
+        resolve()
+      } else {
+        reject(new Error(`docker cp failed (${code})`))
+      }
+    })
+    proc.on('error', reject)
+  })
+
+  // Make readable by agent user
+  await new Promise<void>((resolve) => {
+    const proc = spawn('docker', ['exec', '-u', 'root', containerName, 'chown', 'agent:agent', containerPath])
+    proc.on('close', () => resolve())
+    proc.on('error', () => resolve())
+  })
+
+  return containerPath
+}
+
 export async function getDockerfilePath(): Promise<string> {
   // Check resources/Dockerfile
   const resourcePath = path.join(process.resourcesPath ?? '', 'resources', 'Dockerfile')

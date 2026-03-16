@@ -150,7 +150,9 @@ export const IPC = {
   AGENT_TERMINAL_URL: 'agent:terminal-url',
   LOG_DATA: 'log:data',
   CONFIG_UPDATE: 'config:update',
-  DOCKER_CONTAINER_LOGS: 'docker:container-logs'
+  DOCKER_CONTAINER_LOGS: 'docker:container-logs',
+  AGENT_COPY_FILE: 'agent:copy-file',
+  AGENT_SAVE_TEMP: 'agent:save-temp'
 } as const
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC]

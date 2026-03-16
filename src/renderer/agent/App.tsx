@@ -332,24 +332,101 @@ export default function AgentApp(): React.ReactElement {
     }
   }, [isRunning])
 
-  // Ctrl+V paste: read clipboard in the parent renderer (where we have permission)
-  // and inject into the webview's xterm.js instance.
-  const handlePaste = useCallback((e: KeyboardEvent) => {
-    if (!((e.ctrlKey || e.metaKey) && e.key === 'v')) return
+  // Copy a file into the agent container and inject its path as a prompt
+  const copyFileAndInject = useCallback(async (file: File, hostPath?: string) => {
+    if (!issueNumber) return
+    let filePath = hostPath
+    // If we have a File object but no host path (e.g. clipboard image), write to temp
+    if (!filePath) {
+      const buf = await file.arrayBuffer()
+      // Use IPC to write temp file since renderer can't access fs directly
+      const blob = new Blob([buf])
+      const url = URL.createObjectURL(blob)
+      // We need to save via a temp approach — use the electron temp dir
+      // Actually we'll handle this in main process; for now just use the file path from drop
+      URL.revokeObjectURL(url)
+      return
+    }
+    try {
+      const containerPath = await window.clauboy.copyFileToAgent(issueNumber, filePath, file.name)
+      await window.clauboy.injectPrompt(
+        issueNumber,
+        `Eine Datei wurde bereitgestellt: ${containerPath}`
+      )
+    } catch (err) {
+      console.error('Failed to copy file to agent:', err)
+    }
+  }, [issueNumber])
+
+  // Drag-and-drop files onto agent window
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const files = e.dataTransfer.files
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      // Electron gives us the real path via .path property
+      const hostPath = (file as File & { path?: string }).path
+      if (hostPath) {
+        void copyFileAndInject(file, hostPath)
+      }
+    }
+  }, [copyFileAndInject])
+
+  // Ctrl+V paste: text goes to xterm, files/images go to container filesystem
+  const handlePaste = useCallback((e: ClipboardEvent) => {
+    // Check for files first (images, etc.)
+    if (e.clipboardData?.files && e.clipboardData.files.length > 0) {
+      const file = e.clipboardData.files[0]
+      const hostPath = (file as File & { path?: string }).path
+      if (hostPath) {
+        e.preventDefault()
+        void copyFileAndInject(file, hostPath)
+        return
+      }
+      // Clipboard images don't have a .path — save to temp via main process
+      if (file.type.startsWith('image/')) {
+        e.preventDefault()
+        const reader = new FileReader()
+        reader.onload = (): void => {
+          const buf = Buffer.from(reader.result as ArrayBuffer)
+          const ext = file.type.split('/')[1] || 'png'
+          const name = `clipboard-${Date.now()}.${ext}`
+          // Write to temp via IPC
+          window.clauboy.saveTempFile(name, buf).then((tempPath) => {
+            return window.clauboy.copyFileToAgent(issueNumber, tempPath, name)
+          }).then((containerPath) => {
+            return window.clauboy.injectPrompt(
+              issueNumber,
+              `Ein Bild wurde bereitgestellt: ${containerPath}`
+            )
+          }).catch(console.error)
+        }
+        reader.readAsArrayBuffer(file)
+        return
+      }
+    }
+
+    // Text paste — forward to webview xterm.js
     const wv = webviewRef.current
     if (!wv) return
-    e.preventDefault()
-    navigator.clipboard.readText().then((text) => {
-      if (!text) return
+    const text = e.clipboardData?.getData('text/plain')
+    if (text) {
+      e.preventDefault()
       const escaped = JSON.stringify(text)
       wv.executeJavaScript(`window.term && window.term.paste(${escaped})`)
         .catch(() => {})
-    }).catch(() => {})
-  }, [])
+    }
+  }, [copyFileAndInject, issueNumber])
 
   useEffect(() => {
-    window.addEventListener('keydown', handlePaste)
-    return () => window.removeEventListener('keydown', handlePaste)
+    window.addEventListener('paste', handlePaste)
+    return () => window.removeEventListener('paste', handlePaste)
   }, [handlePaste])
 
   // Auto-retry: reload the webview every 5s if terminal hasn't connected
@@ -375,7 +452,11 @@ export default function AgentApp(): React.ReactElement {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div
+      style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
       {/* Toolbar */}
       <div style={{
         display: 'flex',

@@ -1,6 +1,8 @@
-import { ipcMain, dialog, shell, BrowserWindow } from 'electron'
+import { ipcMain, dialog, shell, BrowserWindow, app } from 'electron'
 import { IPC, Config } from '../shared/types'
 import { Octokit } from '@octokit/rest'
+import * as fs from 'fs'
+import * as path from 'path'
 import { loadConfig, saveConfig } from './config'
 import { appState } from './state'
 import {
@@ -21,7 +23,8 @@ import {
   getDockerfilePath,
   openAuthTerminal,
   getTerminalPort,
-  getContainerLogs
+  getContainerLogs,
+  copyFileToContainer
 } from './docker'
 import { forceSync, startPolling, startActivityPolling } from './polling'
 import { logger } from './logger'
@@ -255,6 +258,20 @@ export function registerIpcHandlers(): void {
   // Fetch docker container logs
   ipcMain.handle(IPC.DOCKER_CONTAINER_LOGS, async (_event, issueNumber: number) => {
     return getContainerLogs(issueNumber)
+  })
+
+  // Copy a file from host into agent container, return container-internal path
+  ipcMain.handle(IPC.AGENT_COPY_FILE, async (_event, issueNumber: number, hostPath: string, fileName: string) => {
+    return copyFileToContainer(issueNumber, hostPath, fileName)
+  })
+
+  // Save binary data to a temp file (for clipboard images), return host path
+  ipcMain.handle(IPC.AGENT_SAVE_TEMP, (_event, fileName: string, data: Buffer) => {
+    const tempDir = path.join(app.getPath('temp'), 'clauboy-uploads')
+    fs.mkdirSync(tempDir, { recursive: true })
+    const filePath = path.join(tempDir, fileName)
+    fs.writeFileSync(filePath, Buffer.from(data))
+    return filePath
   })
 
 }

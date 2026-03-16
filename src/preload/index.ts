@@ -137,7 +137,13 @@ const clauboyAPI = {
     const handler = (_event: Electron.IpcRendererEvent, entry: import('../shared/types').LogEntry): void => cb(entry)
     ipcRenderer.on(IPC.LOG_DATA, handler)
     return () => ipcRenderer.removeListener(IPC.LOG_DATA, handler)
-  }
+  },
+
+  copyFileToAgent: (issueNumber: number, hostPath: string, fileName: string): Promise<string> =>
+    ipcRenderer.invoke(IPC.AGENT_COPY_FILE, issueNumber, hostPath, fileName),
+
+  saveTempFile: (fileName: string, data: Buffer): Promise<string> =>
+    ipcRenderer.invoke(IPC.AGENT_SAVE_TEMP, fileName, data)
 }
 
 contextBridge.exposeInMainWorld('clauboy', clauboyAPI)
