@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useCallback } from 'react'
 import type { AppState, Button, Config, IssueState } from '../../shared/types'
 import { useI18n } from '../shared/useI18n'
 
@@ -303,15 +303,8 @@ export default function AgentApp(): React.ReactElement {
                 if (window.term) window.term.onResize(applyClip);
                 new ResizeObserver(applyClip).observe(document.querySelector('.xterm') || document.body);
 
-                // --- Enable Ctrl+V paste ---
-                document.addEventListener('keydown', function(e) {
-                  if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
-                    e.preventDefault();
-                    navigator.clipboard.readText().then(function(text) {
-                      if (window.term && text) window.term.paste(text);
-                    }).catch(function() {});
-                  }
-                });
+                // Ctrl+V paste is handled by the parent renderer (App.tsx)
+                // via window.term.paste() injected through executeJavaScript.
               })();
             `).catch(() => {})
             setTimeout(() => {
@@ -338,6 +331,26 @@ export default function AgentApp(): React.ReactElement {
       wv.removeEventListener('did-fail-load', onDidFailLoad)
     }
   }, [isRunning])
+
+  // Ctrl+V paste: read clipboard in the parent renderer (where we have permission)
+  // and inject into the webview's xterm.js instance.
+  const handlePaste = useCallback((e: KeyboardEvent) => {
+    if (!((e.ctrlKey || e.metaKey) && e.key === 'v')) return
+    const wv = webviewRef.current
+    if (!wv) return
+    e.preventDefault()
+    navigator.clipboard.readText().then((text) => {
+      if (!text) return
+      const escaped = JSON.stringify(text)
+      wv.executeJavaScript(`window.term && window.term.paste(${escaped})`)
+        .catch(() => {})
+    }).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    window.addEventListener('keydown', handlePaste)
+    return () => window.removeEventListener('keydown', handlePaste)
+  }, [handlePaste])
 
   // Auto-retry: reload the webview every 5s if terminal hasn't connected
   React.useEffect(() => {
