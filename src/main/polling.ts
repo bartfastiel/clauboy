@@ -47,11 +47,12 @@ async function refreshContainerToken(issueNumber: number): Promise<void> {
     proc.on('error', () => resolve())
   })
 
-  // Re-authenticate gh CLI with the new token
+  // Re-authenticate gh CLI with the new token.
+  // GH_TOKEN env var must be unset, otherwise gh refuses to store credentials.
   await new Promise<void>((resolve) => {
     const proc = spawn('docker', [
       'exec', containerName,
-      'bash', '-c', 'gh auth login --with-token < /tmp/.gh_token'
+      'bash', '-c', 'unset GH_TOKEN; gh auth login --with-token < /tmp/.gh_token'
     ])
     proc.on('close', (code) => {
       if (code === 0) {
@@ -61,6 +62,18 @@ async function refreshContainerToken(issueNumber: number): Promise<void> {
       }
       resolve()
     })
+    proc.on('error', () => resolve())
+  })
+
+  // Unset GH_TOKEN in the tmux session environment so gh CLI uses the refreshed
+  // stored auth instead of the stale env var (which was set at container creation
+  // and cannot be updated in running processes).
+  await new Promise<void>((resolve) => {
+    const proc = spawn('docker', [
+      'exec', containerName,
+      'tmux', 'set-environment', '-t', 'claude-agent', '-u', 'GH_TOKEN'
+    ])
+    proc.on('close', () => resolve())
     proc.on('error', () => resolve())
   })
 }

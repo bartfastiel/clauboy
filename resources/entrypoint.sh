@@ -24,6 +24,13 @@ git config --global credential.helper '!f() { echo username=x-access-token; echo
 # Authenticate gh CLI from the token file (so gh issue/pr/comment work as bot)
 gh auth login --with-token < /tmp/.gh_token 2>/dev/null || true
 
+# Unset GH_TOKEN so gh CLI uses the stored auth token (from gh auth login) instead
+# of the env var.  The env var is a one-shot bootstrap value that expires after ~1h
+# for GitHub App installation tokens.  The host refreshes /tmp/.gh_token + gh auth
+# periodically, but cannot update a running process's env vars — so we must not let
+# gh read from one.
+unset GH_TOKEN
+
 # Clone repo into /workspace (shallow clone for speed + isolation)
 if [ -z "$(ls -A /workspace 2>/dev/null)" ] && [ -n "$GITHUB_OWNER" ] && [ -n "$GITHUB_REPO" ]; then
     echo "[clauboy] Cloning ${GITHUB_OWNER}/${GITHUB_REPO} (shallow)..."
