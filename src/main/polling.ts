@@ -25,17 +25,39 @@ async function refreshContainerToken(issueNumber: number): Promise<void> {
   if (Date.now() - last < TOKEN_REFRESH_INTERVAL_MS) return
   // Mark immediately so retries don't pile up even on failure
   lastTokenRefreshAt.set(issueNumber, Date.now())
-  return new Promise((resolve) => {
-    // Update GH_TOKEN in the tmux session environment so future gh invocations use the fresh token
+
+  const containerName = `clauboy-issue-${issueNumber}`
+
+  // Write fresh token to /tmp/.gh_token (git credential helper + gh CLI read from here)
+  await new Promise<void>((resolve) => {
     const proc = spawn('docker', [
-      'exec', `clauboy-issue-${issueNumber}`,
-      'tmux', 'set-environment', '-g', 'GH_TOKEN', token
+      'exec', '-i', containerName,
+      'bash', '-c', 'cat > /tmp/.gh_token'
+    ])
+    proc.stdin.write(token)
+    proc.stdin.end()
+    proc.on('close', (code) => {
+      if (code === 0) {
+        logger.info(`Issue #${issueNumber}: refreshed /tmp/.gh_token`)
+      } else {
+        logger.debug(`Issue #${issueNumber}: token file write failed (code ${code})`)
+      }
+      resolve()
+    })
+    proc.on('error', () => resolve())
+  })
+
+  // Re-authenticate gh CLI with the new token
+  await new Promise<void>((resolve) => {
+    const proc = spawn('docker', [
+      'exec', containerName,
+      'bash', '-c', 'gh auth login --with-token < /tmp/.gh_token'
     ])
     proc.on('close', (code) => {
       if (code === 0) {
-        logger.info(`Issue #${issueNumber}: refreshed GH_TOKEN in tmux environment`)
+        logger.info(`Issue #${issueNumber}: gh auth refreshed`)
       } else {
-        logger.debug(`Issue #${issueNumber}: tmux set-environment failed with code ${code} (container may still be starting)`)
+        logger.debug(`Issue #${issueNumber}: gh auth login failed (code ${code})`)
       }
       resolve()
     })

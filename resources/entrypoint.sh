@@ -14,10 +14,15 @@ if [ ! -f /home/agent/.claude.json ]; then
     fi
 fi
 
-# Configure git credential helper so the PAT is used for git push/pull
-# but is NOT visible in the remote URL (prevents Claude Code from extracting it)
-GIT_TOKEN="${GITHUB_PAT:-$GH_TOKEN}"
-git config --global credential.helper "!f() { echo username=x-access-token; echo password=${GIT_TOKEN}; }; f"
+# Write token to file so it can be refreshed by the host without restarting the container.
+# The git credential helper and gh CLI both read from this file on every invocation.
+echo "$GH_TOKEN" > /tmp/.gh_token
+
+# Configure git credential helper to read token from file (supports live refresh)
+git config --global credential.helper '!f() { echo username=x-access-token; echo "password=$(cat /tmp/.gh_token)"; }; f'
+
+# Authenticate gh CLI from the token file (so gh issue/pr/comment work as bot)
+gh auth login --with-token < /tmp/.gh_token 2>/dev/null || true
 
 # Clone repo into /workspace (shallow clone for speed + isolation)
 if [ -z "$(ls -A /workspace 2>/dev/null)" ] && [ -n "$GITHUB_OWNER" ] && [ -n "$GITHUB_REPO" ]; then

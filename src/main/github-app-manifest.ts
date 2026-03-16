@@ -40,7 +40,14 @@ export async function createGithubAppViaManifest(owner: string, isOrg = false): 
           hook_attributes: { url: 'https://example.com/placeholder', active: false },
           redirect_url: `http://localhost:${port}/callback`,
           public: false,
-          default_permissions: { issues: 'write', contents: 'read', metadata: 'read' }
+          default_permissions: {
+            contents: 'write',
+            issues: 'write',
+            pull_requests: 'write',
+            actions: 'write',
+            workflows: 'write',
+            metadata: 'read'
+          }
         })
 
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
