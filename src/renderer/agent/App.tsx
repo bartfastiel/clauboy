@@ -303,8 +303,18 @@ export default function AgentApp(): React.ReactElement {
                 if (window.term) window.term.onResize(applyClip);
                 new ResizeObserver(applyClip).observe(document.querySelector('.xterm') || document.body);
 
-                // Ctrl+V paste is handled by the parent renderer (App.tsx)
-                // via window.term.paste() injected through executeJavaScript.
+                // Intercept Ctrl+V inside the webview so text goes to xterm
+                // instead of Claude CLI interpreting it as image-paste.
+                // We catch keydown because Claude Code handles Ctrl+V at that level.
+                document.addEventListener('keydown', function(e) {
+                  if ((e.ctrlKey || e.metaKey) && e.key === 'v' && window.term) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    navigator.clipboard.readText().then(function(text) {
+                      if (text) window.term.paste(text);
+                    }).catch(function() {});
+                  }
+                }, true);
               })();
             `).catch(() => {})
             setTimeout(() => {
