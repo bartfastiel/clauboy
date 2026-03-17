@@ -233,6 +233,7 @@ async function runPollTick(): Promise<void> {
         logger.info(`Issue #${issue.number}: container is running in Docker but state was '${issueState.containerStatus}' — correcting`)
         issueState.containerStatus = 'running'
         issueState.terminalPort = TERMINAL_PORT_BASE + issue.number
+        issueState.agentActivity = null
       }
 
       const assigneeLogins = issue.assignees.map((a) => a.login)
@@ -284,6 +285,9 @@ async function runPollTick(): Promise<void> {
           issueState.containerStatus = 'running'
           issueState.terminalPort = TERMINAL_PORT_BASE + issue.number
           issueState.loadingStep = null
+          issueState.agentActivity = null
+          issueState.agentElapsedSeconds = null
+          issueState.agentElapsedCapturedAt = null
           appState.updateIssue(issue.number, issueState)
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err)
