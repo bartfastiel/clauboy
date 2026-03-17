@@ -452,6 +452,7 @@ export default function AgentApp(): React.ReactElement {
     return () => clearInterval(interval)
   }, [isRunning, webviewFailed])
   const agentIsRunning = issueState?.agentIsRunning ?? false
+  const agentStarting = isRunning && issueState?.agentActivity === null
 
   if (!issueState || !config) {
     return (
@@ -480,9 +481,14 @@ export default function AgentApp(): React.ReactElement {
         <ButtonBar
           buttons={config.buttons}
           onAction={handleButtonAction}
-          disabled={agentIsRunning}
+          disabled={agentIsRunning || agentStarting}
           onEdit={() => window.clauboy.openButtonEditor().catch(console.error)}
         />
+        {agentStarting && (
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic', flexShrink: 0 }}>
+            Starting…
+          </span>
+        )}
         {isRunning && (
           <button
             onClick={() => window.clauboy.openAuthTerminal(issueNumber).catch(console.error)}

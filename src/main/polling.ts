@@ -95,7 +95,17 @@ async function refreshAgentActivity(): Promise<void> {
       const pane = await captureAgentPane(issueState.issue.number)
       // eslint-disable-next-line no-control-regex
       const stripped = pane.replace(/\x1b\[[0-9;]*[mGKHF]/g, '')
-      const activity = stripped.includes('esc to interrupt') ? 'working' : 'waiting'
+      const isWorking = stripped.includes('esc to interrupt')
+      // Only transition to 'waiting' after we've seen 'working' at least once,
+      // so we don't jump from "Starting" to "Waiting" while Claude is still booting.
+      let activity: 'working' | 'waiting' | null
+      if (isWorking) {
+        activity = 'working'
+      } else if (issueState.agentActivity === 'working') {
+        activity = 'waiting'
+      } else {
+        activity = issueState.agentActivity // keep null during startup
+      }
       const elapsedSeconds = parseElapsedSeconds(stripped)
       const update: Partial<typeof issueState> = {}
       if (activity !== issueState.agentActivity) update.agentActivity = activity
