@@ -96,12 +96,17 @@ async function refreshAgentActivity(): Promise<void> {
       // eslint-disable-next-line no-control-regex
       const stripped = pane.replace(/\x1b\[[0-9;]*[mGKHF]/g, '')
       const isWorking = stripped.includes('esc to interrupt')
-      // Only transition to 'waiting' after we've seen 'working' at least once,
-      // so we don't jump from "Starting" to "Waiting" while Claude is still booting.
+      // Detect whether Claude Code CLI has fully booted: look for the input
+      // prompt character "❯" or the status-bar text "bypass permissions" which
+      // only appear after ToS acceptance and full init.
+      // This lets us transition out of "Starting" even if Claude never entered
+      // 'working' state (e.g. it booted and is waiting for its first prompt).
+      const hasBooted = stripped.includes('\u276F') || stripped.includes('bypass permissions')
       let activity: 'working' | 'waiting' | null
       if (isWorking) {
         activity = 'working'
-      } else if (issueState.agentActivity === 'working') {
+      } else if (issueState.agentActivity === 'working' || hasBooted) {
+        // Claude finished working, OR Claude has booted and is at its prompt
         activity = 'waiting'
       } else {
         activity = issueState.agentActivity // keep null during startup
