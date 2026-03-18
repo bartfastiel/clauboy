@@ -297,7 +297,11 @@ export default function AgentApp(): React.ReactElement {
                   try { cellH = term._core._renderService.dimensions.css.cell.height; } catch(e) {}
                   if (!cellH) cellH = (term.options.fontSize || 14) * (term.options.lineHeight || 1);
                   var el = document.querySelector('.xterm');
-                  if (el) el.style.clipPath = 'inset(0 0 ' + (cellH * HIDE_ROWS) + 'px 0)';
+                  if (el) {
+                    var hide = cellH * HIDE_ROWS;
+                    el.style.clipPath = 'inset(0 0 ' + hide + 'px 0)';
+                    el.style.marginBottom = '-' + hide + 'px';
+                  }
                 }
                 applyClip();
                 if (window.term) window.term.onResize(applyClip);
