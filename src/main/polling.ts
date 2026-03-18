@@ -4,6 +4,7 @@ import {
   getNewComments
 } from './github'
 import { spawn } from 'child_process'
+import * as net from 'net'
 import { appState } from './state'
 import { startContainer, listRunningContainers, captureAgentPane, TERMINAL_PORT_BASE, imageExists, pullImage, runAgentPrompt } from './docker'
 import { loadConfig } from './config'
@@ -78,6 +79,18 @@ async function refreshContainerToken(issueNumber: number): Promise<void> {
   })
 }
 
+/** Quick TCP probe — resolves true if the port accepts a connection within timeoutMs. */
+function isPortOpen(port: number, timeoutMs = 1500): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = new net.Socket()
+    socket.setTimeout(timeoutMs)
+    socket.once('connect', () => { socket.destroy(); resolve(true) })
+    socket.once('timeout', () => { socket.destroy(); resolve(false) })
+    socket.once('error', () => { resolve(false) })
+    socket.connect(port, '127.0.0.1')
+  })
+}
+
 function parseElapsedSeconds(text: string): number | null {
   // Matches patterns like "(14m 28s", "(5s", "(1h 3m 12s"
   const m = text.match(/\((?:(\d+)h\s+)?(?:(\d+)m\s+)?(\d+)s/)
@@ -99,11 +112,14 @@ async function refreshAgentActivity(): Promise<void> {
       // Detect whether Claude Code CLI has fully booted: look for the input
       // prompt character "❯" or the status-bar text "bypass permissions" which
       // only appear after ToS acceptance and full init.
-      // This lets us transition out of "Starting" even if Claude never entered
-      // 'working' state (e.g. it booted and is waiting for its first prompt).
-      const hasBooted = stripped.includes('\u276F') || stripped.includes('bypass permissions')
+      const cliReady = stripped.includes('\u276F') || stripped.includes('bypass permissions')
+      // Only consider the agent booted once the terminal port (ttyd) is also
+      // reachable — Claude may be ready in tmux before ttyd starts serving.
+      const port = issueState.terminalPort ?? (TERMINAL_PORT_BASE + issueState.issue.number)
+      const terminalUp = cliReady ? await isPortOpen(port) : false
+      const hasBooted = cliReady && terminalUp
       let activity: 'working' | 'waiting' | null
-      if (isWorking) {
+      if (isWorking && terminalUp) {
         activity = 'working'
       } else if (issueState.agentActivity === 'working' || hasBooted) {
         // Claude finished working, OR Claude has booted and is at its prompt

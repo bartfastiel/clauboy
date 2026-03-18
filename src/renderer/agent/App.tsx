@@ -558,7 +558,7 @@ export default function AgentApp(): React.ReactElement {
               src={`http://localhost:${issueState.terminalPort ?? (37680 + issueNumber)}`}
               style={{
                 width: '100%', height: '100%',
-                display: webviewFailed ? 'none' : 'flex'
+                ...(webviewFailed ? { visibility: 'hidden' as const, position: 'absolute' as const } : {})
               }}
             />
             {/* Loading overlay while terminal initializes */}
