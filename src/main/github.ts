@@ -253,6 +253,20 @@ export async function getInstallationToken(): Promise<string | null> {
   }
 }
 
+export async function addCommentReaction(
+  commentId: number,
+  content: 'eyes' | '+1' | '-1' | 'laugh' | 'confused' | 'heart' | 'hooray' | 'rocket' = 'eyes'
+): Promise<void> {
+  const oc = appOctokit ?? getOctokit()
+  const cfg = getConfig()
+  await oc.reactions.createForIssueComment({
+    owner: cfg.github.owner,
+    repo: cfg.github.repo,
+    comment_id: commentId,
+    content
+  })
+}
+
 export function buildCreateIssueUrl(
   config: Config,
   title?: string,

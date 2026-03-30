@@ -1,7 +1,8 @@
 import {
   fetchClauboyIssues,
   getInstallationToken,
-  getNewComments
+  getNewComments,
+  addCommentReaction
 } from './github'
 import { spawn } from 'child_process'
 import * as net from 'net'
@@ -338,13 +339,25 @@ async function runPollTick(): Promise<void> {
           }
 
           if (humanComments.length > 0) {
+            // Remember which comment IDs we're forwarding BEFORE notifying,
+            // so we only react to these — not to comments added in the meantime.
+            const forwardedCommentIds = humanComments.map((c) => c.id)
+
             logger.info(`Issue #${issue.number}: ${humanComments.length} new human comment(s), notifying agent via tmux`)
-            await runAgentPrompt(
-              issue.number,
-              `Es gibt neue Aktivität in Issue #${issue.number}. Bitte lies die aktuellen Kommentare via GitHub CLI und entscheide selbst wie du reagierst.`
-            ).catch((err) =>
+            try {
+              await runAgentPrompt(
+                issue.number,
+                `Es gibt neue Aktivität in Issue #${issue.number}. Bitte lies die aktuellen Kommentare via GitHub CLI und entscheide selbst wie du reagierst.`
+              )
+              // Add 👀 reaction to each forwarded comment so the author knows it was seen
+              for (const commentId of forwardedCommentIds) {
+                await addCommentReaction(commentId, 'eyes').catch((err) =>
+                  logger.debug(`Issue #${issue.number}: failed to add 👀 to comment ${commentId} — ${err instanceof Error ? err.message : String(err)}`)
+                )
+              }
+            } catch (err) {
               logger.debug(`Issue #${issue.number}: failed to notify agent — ${err instanceof Error ? err.message : String(err)}`)
-            )
+            }
           }
         } catch (err) {
           logger.debug(`Issue #${issue.number}: comment check failed — ${err instanceof Error ? err.message : String(err)}`)
