@@ -232,6 +232,17 @@ export async function stopContainer(containerIdOrName: string): Promise<void> {
   }
 }
 
+export async function removeContainer(containerIdOrName: string): Promise<void> {
+  const d = getDocker()
+  try {
+    const container = d.getContainer(containerIdOrName)
+    await container.remove()
+    logger.info(`Docker: removed container ${containerIdOrName.slice(0, 12)}`)
+  } catch (err) {
+    logger.debug(`Docker: failed to remove container ${containerIdOrName.slice(0, 12)} — ${err instanceof Error ? err.message : String(err)}`)
+  }
+}
+
 export async function runAgentPrompt(
   issueNumber: number,
   prompt: string,

@@ -7,7 +7,7 @@ import {
 import { spawn } from 'child_process'
 import * as net from 'net'
 import { appState } from './state'
-import { startContainer, listRunningContainers, captureAgentPane, TERMINAL_PORT_BASE, imageExists, pullImage, runAgentPrompt } from './docker'
+import { startContainer, listRunningContainers, captureAgentPane, TERMINAL_PORT_BASE, imageExists, pullImage, runAgentPrompt, stopContainer, removeContainer } from './docker'
 import { loadConfig } from './config'
 import { ClauboyLabel, IssueState } from '../shared/types'
 import { logger } from './logger'
@@ -365,6 +365,20 @@ async function runPollTick(): Promise<void> {
       }
 
       issueStates.push(issueState)
+    }
+
+    // Stop and remove orphaned containers (running but no longer have a clauboy label)
+    const activeIssueNumbers = new Set(issues.map((i) => i.number))
+    for (const container of runningContainers) {
+      if (container.status === 'running' && !activeIssueNumbers.has(container.issueNumber)) {
+        logger.info(`Orphaned container clauboy-issue-${container.issueNumber} — no clauboy label on issue, stopping and removing`)
+        try {
+          await stopContainer(container.id)
+          await removeContainer(container.id)
+        } catch (err) {
+          logger.debug(`Failed to clean up orphaned container ${container.issueNumber} — ${err instanceof Error ? err.message : String(err)}`)
+        }
+      }
     }
 
     appState.setState({

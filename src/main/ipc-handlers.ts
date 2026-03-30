@@ -20,6 +20,7 @@ import {
   pullImage,
   checkDocker,
   stopContainer,
+  removeContainer,
   getDockerfilePath,
   openAuthTerminal,
   getTerminalPort,
@@ -92,12 +93,10 @@ export function registerIpcHandlers(): void {
     const state = appState.getState()
     const issueState = state.issues.find((i) => i.issue.number === issueNumber)
 
-    // Step 2: Stop container — try by stored ID first, fall back to well-known name
-    if (issueState?.containerId) {
-      await stopContainer(issueState.containerId)
-    } else {
-      await stopContainer(`clauboy-issue-${issueNumber}`)
-    }
+    // Step 2: Stop and remove container — try by stored ID first, fall back to well-known name
+    const containerRef = issueState?.containerId ?? `clauboy-issue-${issueNumber}`
+    await stopContainer(containerRef)
+    await removeContainer(containerRef)
 
     // Step 3: Remove ALL clauboy labels so issue disappears from the list
     await setLabel(issueNumber, [], ['clauboy', 'clauboy:running', 'clauboy:done', 'clauboy:error'])
