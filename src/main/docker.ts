@@ -115,7 +115,10 @@ export async function startContainer(
   env.push(`DEV_PORTS=${DEV_PORT_CONTAINER_START}-${DEV_PORT_CONTAINER_START + DEV_PORT_COUNT - 1}`)
   env.push(`DEV_PORTS_HOST_BASE=${devHostBase}`)
 
-  const claudeAuthDir = path.join(os.homedir(), '.clauboy', 'claude-auth')
+  // Per-issue Claude auth directory so each container has isolated session storage.
+  // This allows `claude --continue` to resume the correct session without a picker.
+  const claudeAuthBase = path.join(os.homedir(), '.clauboy', 'claude-auth')
+  const claudeAuthDir = path.join(claudeAuthBase, `issue-${issueNumber}`)
   fs.mkdirSync(claudeAuthDir, { recursive: true })
   const settingsFile = path.join(claudeAuthDir, 'settings.json')
   if (!fs.existsSync(settingsFile)) {
@@ -134,7 +137,7 @@ export async function startContainer(
   // Sync ~/.claude.json (main config, lives OUTSIDE ~/.claude/) so Claude skips
   // the first-run theme/login wizard. Same approach as claude-code-docker.
   const hostClaudeJson = path.join(os.homedir(), '.claude.json')
-  const authClaudeJson = path.join(claudeAuthDir, '..', 'claude.json')
+  const authClaudeJson = path.join(claudeAuthDir, '..', `claude-issue-${issueNumber}.json`)
   if (fs.existsSync(hostClaudeJson)) {
     fs.copyFileSync(hostClaudeJson, authClaudeJson)
     logger.info('Docker: synced ~/.claude.json from host')

@@ -82,7 +82,10 @@ else
     [ -n "$ISSUE_TITLE" ] && TITLE="#${ISSUE_NUMBER}: ${ISSUE_TITLE}"
     tmux send-keys -t "$SESSION" "printf '\\033]0;${TITLE}\\007'" Enter
     sleep 0.1
-    tmux send-keys -t "$SESSION" "cd /workspace && claude --dangerously-skip-permissions" Enter
+    # Use --continue to resume the previous session if one exists (per-issue
+    # .claude dir is mounted, so --continue always picks the right session).
+    # Falls back to a fresh session on first run (exit code 1 = no session found).
+    tmux send-keys -t "$SESSION" "cd /workspace && claude --dangerously-skip-permissions --continue || claude --dangerously-skip-permissions" Enter
     # Auto-accept the bypass-permissions warning by polling until the prompt appears
     for i in $(seq 1 30); do
         sleep 1
