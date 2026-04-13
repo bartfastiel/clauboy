@@ -82,19 +82,19 @@ function mapIssue(issue: {
   }
 }
 
-// Single API call instead of one-per-label (saves ~4 req/poll at 30 s intervals)
+// Paginate so repos with >100 open issues don't lose clauboy-labeled ones past page 1.
 export async function fetchClauboyIssues(): Promise<GitHubIssue[]> {
   const oc = getOctokit()
   const cfg = getConfig()
 
-  const response = await oc.issues.listForRepo({
+  const data = await oc.paginate(oc.issues.listForRepo, {
     owner: cfg.github.owner,
     repo: cfg.github.repo,
     state: 'open',
     per_page: 100
   })
 
-  return response.data
+  return data
     .filter((issue) =>
       issue.labels.some((l) => {
         const name = typeof l === 'string' ? l : (l.name ?? '')
@@ -108,7 +108,7 @@ export async function fetchAllOpenIssues(): Promise<GitHubIssue[]> {
   const oc = getOctokit()
   const cfg = getConfig()
 
-  const response = await oc.issues.listForRepo({
+  const data = await oc.paginate(oc.issues.listForRepo, {
     owner: cfg.github.owner,
     repo: cfg.github.repo,
     state: 'open',
@@ -116,7 +116,7 @@ export async function fetchAllOpenIssues(): Promise<GitHubIssue[]> {
     sort: 'updated'
   })
 
-  return response.data.map(mapIssue)
+  return data.map(mapIssue)
 }
 
 export async function ensureLabelsExist(): Promise<void> {
