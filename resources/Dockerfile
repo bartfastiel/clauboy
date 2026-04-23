@@ -33,9 +33,6 @@ RUN TTYD_VERSION=$(curl -s https://api.github.com/repos/tsl0922/ttyd/releases/la
     && wget -qO /usr/local/bin/ttyd "https://github.com/tsl0922/ttyd/releases/download/${TTYD_VERSION}/ttyd.x86_64" \
     && chmod +x /usr/local/bin/ttyd
 
-# Install Claude Code CLI
-RUN npm install -g @anthropic-ai/claude-code
-
 # Create non-root user (required by claude --dangerously-skip-permissions)
 RUN useradd -m -s /bin/bash agent
 
@@ -48,6 +45,13 @@ COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 USER agent
+
+# Install Claude Code CLI via official native installer (into ~/.local/bin).
+# The ARG busts the layer cache so each image build pulls the latest stable.
+ARG CLAUDE_CLI_CACHE_BUST=unset
+RUN echo "cache-bust=${CLAUDE_CLI_CACHE_BUST}" && \
+    curl -fsSL https://claude.ai/install.sh | bash
+ENV PATH="/home/agent/.local/bin:${PATH}"
 
 # Configure git for the agent user
 RUN git config --global user.email "clauboy@agent.local" && \
