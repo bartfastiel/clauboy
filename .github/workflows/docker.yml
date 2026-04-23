@@ -7,6 +7,9 @@ on:
     paths:
       - 'resources/Dockerfile'
       - 'resources/entrypoint.sh'
+      - '.github/workflows/docker.yml'
+  schedule:
+    - cron: '0 4 * * *'
   workflow_dispatch:
 
 jobs:
@@ -36,5 +39,7 @@ jobs:
           file: resources/Dockerfile
           push: true
           tags: ${{ vars.DOCKERHUB_USERNAME }}/clauboy-agent:latest
+          build-args: |
+            CLAUDE_CLI_CACHE_BUST=${{ github.run_id }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
