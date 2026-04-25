@@ -2,6 +2,12 @@
 title Clauboy Launcher
 cd /d "%~dp0"
 
+rem Wenn der Launcher aus einem Electron-Host (VS Code, Claude Code, ...)
+rem gestartet wird, ist diese Var oft auf 1 — Electron startet dann als
+rem Plain-Node und require('electron') liefert nur den Pfad-String:
+rem TypeError: Cannot read properties of undefined (reading 'isPackaged').
+set "ELECTRON_RUN_AS_NODE="
+
 set LOGFILE=%USERPROFILE%\.clauboy\launcher.log
 if not exist "%USERPROFILE%\.clauboy" mkdir "%USERPROFILE%\.clauboy"
 

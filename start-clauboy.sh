@@ -3,6 +3,13 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# Wenn der Launcher aus einem Electron-Host (VS Code, Claude Code, ...) gestartet
+# wird, ist diese Var oft auf 1 gesetzt — Electron startet dann als Plain-Node
+# und `require('electron')` liefert nur den Pfad-String. Resultat:
+# `TypeError: Cannot read properties of undefined (reading 'isPackaged')`
+# beim ersten Zugriff auf @electron-toolkit/utils. Hier explizit clearen.
+unset ELECTRON_RUN_AS_NODE
+
 LOGFILE="$HOME/.clauboy/launcher.log"
 mkdir -p "$HOME/.clauboy"
 
