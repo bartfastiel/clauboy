@@ -379,6 +379,19 @@ async function runPollTick(): Promise<void> {
       issueStates.push(issueState)
     }
 
+    // Outage guard: if GitHub returned no issues but Docker still has running
+    // clauboy containers, treat this as a transient API hiccup (e.g. partial
+    // GitHub outage returning "200 OK + []") rather than wiping state and
+    // tearing down every container as an orphan. We can't tell an empty
+    // response apart from a legit "no clauboy issues anywhere" — so when in
+    // doubt, do nothing destructive.
+    const hasRunningContainers = runningContainers.some((c) => c.status === 'running')
+    if (issues.length === 0 && hasRunningContainers) {
+      logger.warn(`Poll tick: GitHub returned 0 issues but ${runningContainers.filter((c) => c.status === 'running').length} clauboy container(s) running — skipping orphan cleanup and preserving state (suspected transient API issue)`)
+      appState.setState({ isSyncing: false, lastSyncAt: new Date().toISOString() })
+      return
+    }
+
     // Stop and remove orphaned containers (running but no longer have a clauboy label)
     const activeIssueNumbers = new Set(issues.map((i) => i.number))
     for (const container of runningContainers) {
