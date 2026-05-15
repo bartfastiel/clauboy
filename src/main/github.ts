@@ -84,7 +84,7 @@ function mapIssue(issue: {
 
 // Paginate so repos with >100 open issues don't lose clauboy-labeled ones past page 1.
 export async function fetchClauboyIssues(): Promise<GitHubIssue[]> {
-  const oc = getOctokit()
+  const oc = appOctokit ?? getOctokit()
   const cfg = getConfig()
 
   const data = await oc.paginate(oc.issues.listForRepo, {
@@ -105,7 +105,7 @@ export async function fetchClauboyIssues(): Promise<GitHubIssue[]> {
 }
 
 export async function fetchAllOpenIssues(): Promise<GitHubIssue[]> {
-  const oc = getOctokit()
+  const oc = appOctokit ?? getOctokit()
   const cfg = getConfig()
 
   const data = await oc.paginate(oc.issues.listForRepo, {
@@ -120,7 +120,7 @@ export async function fetchAllOpenIssues(): Promise<GitHubIssue[]> {
 }
 
 export async function ensureLabelsExist(): Promise<void> {
-  const oc = getOctokit()
+  const oc = appOctokit ?? getOctokit()
   const cfg = getConfig()
 
   const existingLabels = await oc.issues.listLabelsForRepo({
@@ -152,7 +152,7 @@ export async function setLabel(
   add: ClauboyLabel[],
   remove: ClauboyLabel[]
 ): Promise<void> {
-  const oc = getOctokit()
+  const oc = appOctokit ?? getOctokit()
   const cfg = getConfig()
 
   // Get current labels
@@ -195,7 +195,7 @@ export async function getNewComments(
   issueNumber: number,
   sinceId: number | null
 ): Promise<GitHubComment[]> {
-  const oc = getOctokit()
+  const oc = appOctokit ?? getOctokit()
   const cfg = getConfig()
 
   const response = await oc.issues.listComments({
@@ -229,7 +229,7 @@ export async function getNewComments(
 }
 
 export async function assignIssue(issueNumber: number, assignee: string): Promise<void> {
-  const oc = getOctokit()
+  const oc = appOctokit ?? getOctokit()
   const cfg = getConfig()
   await oc.issues.addAssignees({
     owner: cfg.github.owner,
